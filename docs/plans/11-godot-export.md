@@ -1,8 +1,8 @@
-# Plan 09 — Godot Export Formats
+# Plan 11 — Godot Export Formats
 
 ## Goal
 
-Add the first engine-specific export formats: `godot-spriteframes` (a `SpriteFrames` resource for `AnimatedSprite2D`) and `godot-atlas` (per-frame `AtlasTexture` resources). This validates that the format registry from plan 08 extends cleanly to engine-specific output without touching generic code.
+Add the first engine-specific export formats: `godot-spriteframes` (a `SpriteFrames` resource for `AnimatedSprite2D`) and `godot-atlas` (per-frame `AtlasTexture` resources). This validates that the format registry from plan 10 extends cleanly to engine-specific output without touching generic code.
 
 ## Scope
 
@@ -204,7 +204,7 @@ used as items in an `ItemList`).
 - Each `.tres` file contains a `Rect2` matching the frame's rect in the manifest.
 - Golden snapshot for `frame_000.tres`.
 
-Command-level tests (via `cmd_export.go`, unchanged from plan 08):
+Command-level tests (via `cmd_export.go`, unchanged from plan 10):
 - `export out/slice/walk_4x1 --format godot-spriteframes --json` → envelope with `ok: true`, `out` ending in `.tres`.
 - `export out/slice/walk_4x1 --format godot-atlas --sheet res://walk_sheet.png --json` → envelope with `tres_paths` array of 4 paths.
 - `export --list-formats --json` now shows 4 formats: `gif`, `sheet-png`, `godot-spriteframes`, `godot-atlas`.
@@ -233,13 +233,13 @@ Command-level tests (via `cmd_export.go`, unchanged from plan 08):
 ```
 feat(godot): godot-spriteframes and godot-atlas export formats
 
-Add two engine-specific export formats via the plan-08 registry:
+Add two engine-specific export formats via the plan-10 registry:
 godot-spriteframes (.tres for AnimatedSprite2D) and godot-atlas
 (per-frame AtlasTexture .tres). Deterministic UIDs and SubResource
 IDs ensure byte-identical reruns. No changes to cmd_export.go.
 ```
 
-## Post-plan-09 state
+## Post-plan-11 state
 
 After this plan merges, the full pipeline described in the overview is
 functional:

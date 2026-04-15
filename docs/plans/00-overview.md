@@ -4,7 +4,7 @@ A standalone Go CLI for cleaning up AI-generated pixel art and exporting it to g
 
 ## Design principles
 
-- **Engine-agnostic core.** Image processing (slice, snap, palette, align, diff) has no engine dependencies and works for Godot, Unity, Unreal, web, anywhere.
+- **Engine-agnostic core.** Image processing (slice, snap, palette, segment, align, diff) has no engine dependencies and works for Godot, Unity, Unreal, web, anywhere.
 - **Pluggable export formats.** A single `export` command with a `--format=<name>` flag dispatches to a format registry. Godot is the first target; Unity, Aseprite JSON, TexturePacker, etc. drop in later without touching the rest of the code.
 - **Agent ergonomics first.** Stable `{ok, data, error}` JSON envelope on every command. `sprite-gen spec` discovers the whole command surface. Idempotent writes with deterministic paths. Visual artifacts (GIFs, diff PNGs) alongside structured data so vision models can verify.
 - **Minimum viable increments.** Each plan below is one reviewable PR. The first plan ships a skeleton that does almost nothing but proves the architecture. CI comes second. Features stack on top.
@@ -20,7 +20,7 @@ Commands are grouped by **what they read** and **what they produce**:
 | One image | Report (no files) | `inspect sheet`, `inspect frame` |
 | One image | One image | `snap pixels`, `snap scale`, `palette apply` |
 | One image | Palette file | `palette extract` |
-| One image | Many images + manifest | `slice grid`, `slice auto` |
+| One image | Many images + manifest | `slice grid`, `slice auto`, `segment subjects` |
 | Many images | Many images + manifest | `align frames` |
 | Two images | Report + diff image | `diff frames` |
 | Many images + manifest | One artifact (any format) | `export` |
@@ -48,17 +48,20 @@ Status legend: ✅ Done · 🚧 In progress · 📋 Planned
 | 01 | ✅ Done | Skeleton | Proves the dispatch, envelope, and spec architecture. No real features. Tiny PR, fast review. Merged in [#2](https://github.com/kkjang/sprite-gen/pull/2). | `01-skeleton.md` |
 | 02 | ✅ Done | CI + Releases | Lock in build/test/release before accumulating code. Mirrors [`godot-bridge`](https://github.com/kkjang/godot-bridge) patterns. Second-smallest PR. Merged in [#4](https://github.com/kkjang/sprite-gen/pull/4). | `02-ci-releases.md` |
 | 03 | 📋 Planned | LLM Provider Generate | Adds `generate image` + provider registry (first provider: OpenAI `gpt-image-1`). Establishes external-API and secret-handling patterns before image-processing code lands; unblocks dogfooding — every downstream plan can generate its own fixtures. | `03-llm-generate.md` |
-| 04 | 📋 Planned | Inspect | Introduces the `pixel` package (foundational). Zero writes — read-only, easiest to test. First image-processing feature. | `04-inspect.md` |
+| 04 | ✅ Done | Inspect | Introduces the `pixel` package (foundational). Zero writes — read-only, easiest to test. First image-processing feature. Merged in [#6](https://github.com/kkjang/sprite-gen/pull/6). | `04-inspect.md` |
 | 05 | 📋 Planned | Palette ops | Introduces `palette` package. `palette extract` and `palette apply` are standalone-useful and unblock snap. | `05-palette.md` |
 | 06 | 📋 Planned | Pixel snap | Depends on `palette` (snap uses a target palette). Completes the "clean up a single PNG" story. | `06-snap.md` |
 | 07 | 📋 Planned | Slice | Introduces `sheet` and `manifest` packages. Turns one sheet into many frames + manifest — gateway to everything animation-related. | `07-slice.md` |
-| 08 | 📋 Planned | Align + Diff | Frame-level ops that depend on slice having run. Align fixes drift; diff verifies results. | `08-align-diff.md` |
-| 09 | 📋 Planned | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `09-export-pipeline.md` |
-| 10 | 📋 Planned | Godot export formats | First engine-specific formats: `godot-spriteframes` and `godot-atlas`. Validates that the registry extends cleanly. | `10-godot-export.md` |
+| 08 | 📋 Planned | Segment subjects | Alternate path to `frames + manifest` from a *messy* AI-generated canvas: threshold alpha, connected-component label each subject, normalize into fixed-size cells with baseline alignment. Composes with align/diff/export unchanged. | `08-segment.md` |
+| 09 | 📋 Planned | Align + Diff | Frame-level ops that depend on slice or segment having run. Align fixes drift; diff verifies results. | `09-align-diff.md` |
+| 10 | 📋 Planned | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `10-export-pipeline.md` |
+| 11 | 📋 Planned | Godot export formats | First engine-specific formats: `godot-spriteframes` and `godot-atlas`. Validates that the registry extends cleanly. | `11-godot-export.md` |
 
 ## Pipeline this builds toward
 
-After all ten plans are merged, an agent can run the full pipeline end-to-end without leaving the CLI:
+After all eleven plans are merged, an agent can run the full pipeline end-to-end without leaving the CLI. There are two canonical entry paths into the frame-set world, picked by input shape:
+
+### Happy path — clean sheet input
 
 ```bash
 # Generate (plan 03)
@@ -73,17 +76,35 @@ sprite-gen snap pixels  knight.png --palette palette.hex
 # Slice into frames (plan 07)
 sprite-gen slice grid   knight_snapped.png --cols 4 --rows 1 --out frames/
 
-# Fix drift, verify (plans 08, 09)
+# Fix drift, verify (plans 09, 10)
 sprite-gen align frames frames/ --anchor feet
 sprite-gen export       frames/ --format gif --fps 8 --out preview.gif
 
-# Export to Godot (plan 10)
+# Export to Godot (plan 11)
 sprite-gen export       frames/ --format godot-spriteframes --anim walk:*.png --out walk.tres
+```
+
+### Messy path — real `gpt-image-1` output
+
+`gpt-image-1` tends to ignore prompted sprite-sheet constraints: subjects end up scattered across an oversized canvas with glow halos and soft edges. `segment subjects` (plan 08) salvages these:
+
+```bash
+# Inspect to diagnose the mess
+sprite-gen inspect sheet knight.png --json
+#   -> huge bbox, high aa_score, many fractional-alpha pixels
+
+# Segment the canvas directly into normalized frames (plan 08)
+sprite-gen segment subjects knight.png --cell 32x32 --expected 4 --anchor feet \
+    --out frames/
+
+# Continue with the same align → export pipeline
+sprite-gen align frames frames/ --anchor feet
+sprite-gen export       frames/ --format godot-spriteframes --out walk.tres
 ```
 
 Each intermediate step is independently useful; the full chain is the happy path.
 
-## Repository layout (post plan 10)
+## Repository layout (post plan 11)
 
 ```
 sprite-gen/
@@ -103,6 +124,7 @@ sprite-gen/
     cmd_generate.go
     cmd_inspect.go
     cmd_slice.go
+    cmd_segment.go
     cmd_snap.go
     cmd_palette.go
     cmd_align.go
@@ -110,9 +132,10 @@ sprite-gen/
     cmd_export.go
     main_test.go
   internal/
-    pixel/               # load/save PNG, scale, bbox, alpha
+    pixel/               # load/save PNG, scale, bbox, alpha, alpha masks, morphology
     palette/             # extract, quantize, snap, read/write palette files
     sheet/               # grid detection, slice, pack
+    segment/             # connected-component labeling, cell normalization
     align/               # centroid/bbox/feet anchors, pivot computation
     diff/                # frame comparison
     manifest/            # shared JSON manifest format for frame sets

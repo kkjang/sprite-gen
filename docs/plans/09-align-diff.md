@@ -1,8 +1,8 @@
-# Plan 07 — Align + Diff
+# Plan 09 — Align + Diff
 
 ## Goal
 
-Fix sub-pixel drift between animation frames (the most common flaw in AI-generated walk cycles) and verify corrections with a pixel-level diff. Both commands operate on a directory of frames produced by plan 06 (`slice`).
+Fix sub-pixel drift between animation frames (the most common flaw in AI-generated walk cycles) and verify corrections with a pixel-level diff. Both commands operate on a directory of frames produced by plan 07 (`slice`) or plan 08 (`segment`).
 
 ## Scope
 
@@ -274,7 +274,7 @@ internal/diff (pixel comparison + diff overlay). Two new verbs:
 
 ## Notes for the next plan
 
-- Plan 08 (`export`) reads the manifest's `pivot` field when writing
+- Plan 10 (`export`) reads the manifest's `pivot` field when writing
   Godot AtlasTexture resources — the `pivot` data set by `align` is
   meaningful to the engine, not just for visual verification.
 - `DiffImage` produces a PNG artifact alongside structured JSON.

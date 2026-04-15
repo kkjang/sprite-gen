@@ -1,8 +1,8 @@
-# Plan 08 — Export Pipeline + Generic Formats
+# Plan 10 — Export Pipeline + Generic Formats
 
 ## Goal
 
-Introduce the format registry and the `export` command. Ship two engine-agnostic formats (`gif` for preview, `sheet-png` for packed sprite sheet) to prove the registry extends cleanly before adding engine-specific formats in plan 09.
+Introduce the format registry and the `export` command. Ship two engine-agnostic formats (`gif` for preview, `sheet-png` for packed sprite sheet) to prove the registry extends cleanly before adding engine-specific formats in plan 11.
 
 ## Scope
 
@@ -15,7 +15,7 @@ Introduce the format registry and the `export` command. Ship two engine-agnostic
 - Tests: registry wiring, GIF output, sheet-png round-trip
 
 **Out:**
-- Any engine-specific formats (plan 09)
+- Any engine-specific formats (plan 11)
 - Upload/transfer to any external system
 
 ## File plan
@@ -288,12 +288,12 @@ feat(export): format registry + gif and sheet-png exporters
 Add internal/export with Format interface and init()-based registry.
 Single `export DIR --format=<name>` command replaces the previous
 compose verbs. Ship two engine-agnostic formats: gif (animated preview)
-and sheet-png (repack). Plan 09 adds engine-specific formats.
+and sheet-png (repack). Plan 11 adds engine-specific formats.
 ```
 
 ## Notes for the next plan
 
-- Plan 09 adds `godot-spriteframes` and `godot-atlas` formats. They
+- Plan 11 adds `godot-spriteframes` and `godot-atlas` formats. They
   self-register in `init()` and require zero changes to `cmd_export.go`
   or `internal/export/export.go` — the registry is the extension point.
 - The GIF quantization in this plan is per-frame (each frame has its own
