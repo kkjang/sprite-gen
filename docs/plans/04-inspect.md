@@ -1,4 +1,4 @@
-# Plan 03 — Inspect
+# Plan 04 — Inspect
 
 ## Goal
 
@@ -13,9 +13,9 @@ Ship the first "real" feature: read-only image analysis. Introduces the `interna
 - Tests: pixel package unit tests + command-level tests with small fixtures
 
 **Out:**
-- Any image writing (palette extract is plan 04, which is the first writer)
-- Any slicing logic (comes in plan 06)
-- Actual palette extraction (plan 04; `inspect sheet` only reports a *count* of unique colors, not the colors themselves)
+- Any image writing (palette extract is plan 05, which is the first writer)
+- Any slicing logic (comes in plan 07)
+- Actual palette extraction (plan 05; `inspect sheet` only reports a *count* of unique colors, not the colors themselves)
 
 ## File plan
 
@@ -25,7 +25,7 @@ sprite-gen/
     cmd_inspect.go                      # flag parsing + dispatch to sheet/frame
   internal/
     pixel/
-      load.go                           # LoadPNG, Save helpers (save unused in this plan)
+      load.go                           # LoadPNG
       bbox.go                           # BBox(img) returns tight non-transparent rect
       stats.go                          # Stats(img): colors, alpha histogram, aa score
       grid.go                           # GuessGrid(img): column/row count from gutters
@@ -33,13 +33,8 @@ sprite-gen/
       bbox_test.go
       stats_test.go
       grid_test.go
-  testdata/
-    input/
-      inspect/
-        solid_16x16.png                 # single color, no alpha
-        padded_16x16_in_32x32.png       # content centered, transparent border
-        aa_sample.png                   # obvious anti-aliasing
-        grid_4x1_32px.png               # 128x32 walk cycle, four 32x32 frames
+  # Tests may generate small temporary PNG fixtures instead of committing
+  # binary files under testdata/.
 ```
 
 ## Pixel package design
@@ -96,7 +91,7 @@ func GuessGrid(img image.Image) Grid
    opaque backgrounds, no padding), try to find the GCD of
    sub-image bounding boxes. Out of scope here; return Confidence=0.
 
-The v1 of this is deliberately simple. `slice auto` in plan 06 will extend
+The v1 of this is deliberately simple. `slice auto` in plan 07 will extend
 it; `inspect sheet` just reports what it finds.
 
 ## Command design
@@ -159,7 +154,7 @@ Same shape but for a single-frame image. No grid fields. Adds:
 
 `pivot_hint` here is a trivial default — bottom-center of the bbox for
 `feet` anchor. Real pivot computation across a frame set lives in
-plan 07 (`align`). Inspect reports only a single-frame guess.
+plan 08 (`align`). Inspect reports only a single-frame guess.
 
 ## Testing
 
@@ -186,7 +181,7 @@ Command-level tests in `cmd_inspect_test.go`:
 3. `sprite-gen inspect sheet some_random.png --json | jq .` round-trips and `ok` is `true`.
 4. `sprite-gen spec` now shows four commands: `version`, `spec`, `inspect sheet`, `inspect frame`.
 5. No writes happen in any code path of this plan (the command never calls `os.Create`, `os.WriteFile`, etc).
-6. `internal/pixel` has no imports outside stdlib except `golang.org/x/image/draw` if we need nearest-neighbor; even that we can avoid in plan 03 since inspect never resizes.
+6. `internal/pixel` has no imports outside stdlib except `golang.org/x/image/draw` if we need nearest-neighbor; even that we can avoid in plan 04 since inspect never resizes.
 
 ## Suggested commit message
 
@@ -201,12 +196,12 @@ real data payload.
 
 ## Notes for the next plan
 
-- `palette extract` (plan 04) will reuse the unique-color counter but
+- `palette extract` (plan 05) will reuse the unique-color counter but
   return the actual colors, not just the count. Factor it so that the
   core quantize loop is reachable by both without duplicating code.
-- `GuessGrid` is deliberately unsophisticated. Plan 06 (`slice`) will
+- `GuessGrid` is deliberately unsophisticated. Plan 07 (`slice`) will
   likely add a GCD-based mode for images without transparent gutters.
   Don't over-engineer it here.
 - `Stats.AAScore` is an *indicator*, not a verdict. Don't tune thresholds
-  in this plan; plan 05 (`snap pixels`) is where AA removal lives and
+  in this plan; plan 06 (`snap pixels`) is where AA removal lives and
   will define what "too much AA" means in context.
