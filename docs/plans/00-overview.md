@@ -16,6 +16,7 @@ Commands are grouped by **what they read** and **what they produce**:
 | Read | Produce | Commands |
 |---|---|---|
 | Nothing | Metadata | `version`, `spec` |
+| Prompt | One image | `generate image` |
 | One image | Report (no files) | `inspect sheet`, `inspect frame` |
 | One image | One image | `snap pixels`, `snap scale`, `palette apply` |
 | One image | Palette file | `palette extract` |
@@ -24,7 +25,7 @@ Commands are grouped by **what they read** and **what they produce**:
 | Two images | Report + diff image | `diff frames` |
 | Many images + manifest | One artifact (any format) | `export` |
 
-The `export` command is the single convergence point for all output formats. Everything else is pure preprocessing.
+The `generate` command is the single convergence point for provider-backed image creation (prompt → image, via a provider registry). The `export` command is the single convergence point for all output formats (image → artifact, via a format registry). Everything in between is pure image processing.
 
 ## Out of scope
 
@@ -34,50 +35,61 @@ The `export` command is the single convergence point for all output formats. Eve
 - **3D model generation.** Different tool, different day.
 - **Skeletal / bone animation.** Frame-based only.
 
+See [`future-enhancements.md`](future-enhancements.md) for the broader backlog (additional `generate` sub-commands, more providers, alternate secret backends, more export formats, engine-specific integrations).
+
 ## Plan ordering and rationale
 
 Plans must be executed in this order. Earlier plans are prerequisites for later ones.
 
-| # | Plan | Why this position | File |
-|---|---|---|---|
-| 01 | Skeleton | Proves the dispatch, envelope, and spec architecture. No real features. Tiny PR, fast review. | `01-skeleton.md` |
-| 02 | CI + Releases | Lock in build/test/release before accumulating code. Mirrors [`godot-bridge`](https://github.com/kkjang/godot-bridge) patterns. Second-smallest PR. | `02-ci-releases.md` |
-| 03 | Inspect | Introduces the `pixel` package (foundational). Zero writes — read-only, easiest to test. First "real" feature. | `03-inspect.md` |
-| 04 | Palette ops | Introduces `palette` package. `palette extract` and `palette apply` are standalone-useful and unblock snap. | `04-palette.md` |
-| 05 | Pixel snap | Depends on `palette` (snap uses a target palette). Completes the "clean up a single PNG" story. | `05-snap.md` |
-| 06 | Slice | Introduces `sheet` and `manifest` packages. Turns one sheet into many frames + manifest — gateway to everything animation-related. | `06-slice.md` |
-| 07 | Align + Diff | Frame-level ops that depend on slice having run. Align fixes drift; diff verifies results. | `07-align-diff.md` |
-| 08 | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `08-export-pipeline.md` |
-| 09 | Godot export formats | First engine-specific formats: `godot-spriteframes` and `godot-atlas`. Validates that the registry extends cleanly. | `09-godot-export.md` |
+Status legend: ✅ Done · 🚧 In progress · 📋 Planned
+
+| # | Status | Plan | Why this position | File |
+|---|---|---|---|---|
+| 01 | ✅ Done | Skeleton | Proves the dispatch, envelope, and spec architecture. No real features. Tiny PR, fast review. Merged in [#2](https://github.com/kkjang/sprite-gen/pull/2). | `01-skeleton.md` |
+| 02 | 📋 Planned | CI + Releases | Lock in build/test/release before accumulating code. Mirrors [`godot-bridge`](https://github.com/kkjang/godot-bridge) patterns. Second-smallest PR. | `02-ci-releases.md` |
+| 03 | 📋 Planned | LLM Provider Generate | Adds `generate image` + provider registry (first provider: OpenAI `gpt-image-1`). Establishes external-API and secret-handling patterns before image-processing code lands; unblocks dogfooding — every downstream plan can generate its own fixtures. | `03-llm-generate.md` |
+| 04 | 📋 Planned | Inspect | Introduces the `pixel` package (foundational). Zero writes — read-only, easiest to test. First image-processing feature. | `04-inspect.md` |
+| 05 | 📋 Planned | Palette ops | Introduces `palette` package. `palette extract` and `palette apply` are standalone-useful and unblock snap. | `05-palette.md` |
+| 06 | 📋 Planned | Pixel snap | Depends on `palette` (snap uses a target palette). Completes the "clean up a single PNG" story. | `06-snap.md` |
+| 07 | 📋 Planned | Slice | Introduces `sheet` and `manifest` packages. Turns one sheet into many frames + manifest — gateway to everything animation-related. | `07-slice.md` |
+| 08 | 📋 Planned | Align + Diff | Frame-level ops that depend on slice having run. Align fixes drift; diff verifies results. | `08-align-diff.md` |
+| 09 | 📋 Planned | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `09-export-pipeline.md` |
+| 10 | 📋 Planned | Godot export formats | First engine-specific formats: `godot-spriteframes` and `godot-atlas`. Validates that the registry extends cleanly. | `10-godot-export.md` |
 
 ## Pipeline this builds toward
 
-After all nine plans are merged, an agent can run the full pipeline on AI-generated input:
+After all ten plans are merged, an agent can run the full pipeline end-to-end without leaving the CLI:
 
 ```bash
-# Clean up (plans 04, 05)
+# Generate (plan 03)
+sprite-gen generate image "knight walk cycle, 4 frames, 32x32, pixel art" \
+    --n 1 --size 1024x1024 --out knight.png
+
+# Clean up (plans 05, 06)
 sprite-gen snap scale   knight.png --factor auto
 sprite-gen palette extract knight.png --max 16 > palette.hex
 sprite-gen snap pixels  knight.png --palette palette.hex
 
-# Slice into frames (plan 06)
+# Slice into frames (plan 07)
 sprite-gen slice grid   knight_snapped.png --cols 4 --rows 1 --out frames/
 
-# Fix drift, verify (plans 07, 08)
+# Fix drift, verify (plans 08, 09)
 sprite-gen align frames frames/ --anchor feet
 sprite-gen export       frames/ --format gif --fps 8 --out preview.gif
 
-# Export to Godot (plan 09)
+# Export to Godot (plan 10)
 sprite-gen export       frames/ --format godot-spriteframes --anim walk:*.png --out walk.tres
 ```
 
 Each intermediate step is independently useful; the full chain is the happy path.
 
-## Repository layout (post plan 09)
+## Repository layout (post plan 10)
 
 ```
 sprite-gen/
   go.mod
+  .env.example           # template for provider API keys
+  .gitignore             # ignores .env, out/, *.key, *.pem, credentials
   README.md
   AGENTS.md
   releases.yaml
@@ -88,6 +100,7 @@ sprite-gen/
     main.go              # dispatch + global flags (THIN)
     cmd_version.go
     cmd_spec.go
+    cmd_generate.go
     cmd_inspect.go
     cmd_slice.go
     cmd_snap.go
@@ -105,6 +118,9 @@ sprite-gen/
     manifest/            # shared JSON manifest format for frame sets
     jsonout/             # {ok, data, error} envelope, writer helpers
     specreg/             # CLI spec registry, populated at init()
+    secrets/             # godotenv-backed loader + redaction helper
+    provider/            # ImageProvider interface + registry
+      openai/            # gpt-image-1 client (stdlib net/http)
     export/
       export.go          # Format interface + registry
       context.go         # ExportContext (frames, manifest, options)
@@ -136,3 +152,4 @@ Every `cmd_*.go` file stays under ~150 lines — they are thin flag parsers that
 - Default output paths are deterministic: `./out/<subject>/<stem>/...`
 - Golden test files under `testdata/golden/` regenerable with `go test -update`
 - No dependencies on [`godot-bridge`](https://github.com/kkjang/godot-bridge) at build time or runtime
+- Every plan-implementation PR must fold the plan's durable decisions into `AGENTS.md` (contributor conventions) and/or `README.md` (user surface) before merging. The `docs/plans/*.md` files are scaffolding and will be removed once all plans are complete; anything worth keeping must migrate out of them.
