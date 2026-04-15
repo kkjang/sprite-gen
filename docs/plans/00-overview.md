@@ -46,7 +46,7 @@ Status legend: ✅ Done · 🚧 In progress · 📋 Planned
 | # | Status | Plan | Why this position | File |
 |---|---|---|---|---|
 | 01 | ✅ Done | Skeleton | Proves the dispatch, envelope, and spec architecture. No real features. Tiny PR, fast review. Merged in [#2](https://github.com/kkjang/sprite-gen/pull/2). | `01-skeleton.md` |
-| 02 | 📋 Planned | CI + Releases | Lock in build/test/release before accumulating code. Mirrors [`godot-bridge`](https://github.com/kkjang/godot-bridge) patterns. Second-smallest PR. | `02-ci-releases.md` |
+| 02 | ✅ Done | CI + Releases | Lock in build/test/release before accumulating code. Mirrors [`godot-bridge`](https://github.com/kkjang/godot-bridge) patterns. Second-smallest PR. Merged in [#4](https://github.com/kkjang/sprite-gen/pull/4). | `02-ci-releases.md` |
 | 03 | 📋 Planned | LLM Provider Generate | Adds `generate image` + provider registry (first provider: OpenAI `gpt-image-1`). Establishes external-API and secret-handling patterns before image-processing code lands; unblocks dogfooding — every downstream plan can generate its own fixtures. | `03-llm-generate.md` |
 | 04 | 📋 Planned | Inspect | Introduces the `pixel` package (foundational). Zero writes — read-only, easiest to test. First image-processing feature. | `04-inspect.md` |
 | 05 | 📋 Planned | Palette ops | Introduces `palette` package. `palette extract` and `palette apply` are standalone-useful and unblock snap. | `05-palette.md` |
