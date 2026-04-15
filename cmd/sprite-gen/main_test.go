@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"runtime/debug"
 	"strings"
 	"testing"
 
@@ -11,6 +12,17 @@ import (
 )
 
 func TestRunVersion(t *testing.T) {
+	originalVersion := version
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		readBuildInfo = originalReadBuildInfo
+	})
+	version = "dev"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Main: debug.Module{Version: "(devel)"}}, true
+	}
+
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
@@ -27,6 +39,17 @@ func TestRunVersion(t *testing.T) {
 }
 
 func TestRunVersionJSON(t *testing.T) {
+	originalVersion := version
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		readBuildInfo = originalReadBuildInfo
+	})
+	version = "dev"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Main: debug.Module{Version: "(devel)"}}, true
+	}
+
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
@@ -48,6 +71,60 @@ func TestRunVersionJSON(t *testing.T) {
 	}
 	if data["version"] == "" {
 		t.Fatalf("data.version = %v, want non-empty", data["version"])
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+}
+
+func TestRunVersionUsesBuildInfoVersion(t *testing.T) {
+	originalVersion := version
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		readBuildInfo = originalReadBuildInfo
+	})
+	version = "dev"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Main: debug.Module{Version: "v0.1.1"}}, true
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := run([]string{"version"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() exit code = %d, want 0", exitCode)
+	}
+	if got := stdout.String(); !strings.Contains(got, "v0.1.1") {
+		t.Fatalf("stdout = %q, want build info version", got)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+}
+
+func TestRunVersionPrefersInjectedVersion(t *testing.T) {
+	originalVersion := version
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		readBuildInfo = originalReadBuildInfo
+	})
+	version = "v9.9.9"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Main: debug.Module{Version: "v0.1.1"}}, true
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := run([]string{"version"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() exit code = %d, want 0", exitCode)
+	}
+	if got := stdout.String(); !strings.Contains(got, "v9.9.9") {
+		t.Fatalf("stdout = %q, want injected version", got)
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q, want empty", stderr.String())

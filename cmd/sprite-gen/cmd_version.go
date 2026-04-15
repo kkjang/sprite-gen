@@ -27,7 +27,8 @@ func runVersion(args []string, stdout, _ io.Writer, asJSON bool) error {
 		return fmt.Errorf("version takes no positional arguments")
 	}
 
-	text := fmt.Sprintf("sprite-gen %s\n", version)
-	data := map[string]string{"version": version}
+	resolved := resolvedVersion()
+	text := fmt.Sprintf("sprite-gen %s\n", resolved)
+	data := map[string]string{"version": resolved}
 	return jsonout.Write(stdout, asJSON, text, data)
 }
