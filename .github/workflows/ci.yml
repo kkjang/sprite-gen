@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Go test
+        run: go test -race -count=1 ./...
+
+      - name: Go build
+        run: go build -o /tmp/sprite-gen ./cmd/sprite-gen
+
+      - name: Smoke test
+        run: |
+          /tmp/sprite-gen version
+          /tmp/sprite-gen spec | python3 -c 'import json,sys; json.load(sys.stdin)'

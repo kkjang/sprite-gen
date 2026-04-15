@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 
 	"github.com/kkjang/sprite-gen/internal/jsonout"
 )
 
-const version = "dev"
+var version = "dev"
+
+var readBuildInfo = debug.ReadBuildInfo
 
 type handlerFunc func(args []string, stdout, stderr io.Writer, asJSON bool) error
 
@@ -54,4 +57,20 @@ func extractGlobalJSONFlag(args []string) ([]string, bool) {
 		filtered = append(filtered, arg)
 	}
 	return filtered, asJSON
+}
+
+func resolvedVersion() string {
+	if version != "" && version != "dev" {
+		return version
+	}
+
+	info, ok := readBuildInfo()
+	if !ok {
+		return version
+	}
+	if info.Main.Version == "" || info.Main.Version == "(devel)" {
+		return version
+	}
+
+	return info.Main.Version
 }
