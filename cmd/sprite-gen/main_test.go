@@ -144,11 +144,11 @@ func TestRunSpec(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("spec command count = %d, want 2", len(got))
+	if len(got) != 3 {
+		t.Fatalf("spec command count = %d, want 3", len(got))
 	}
-	if got[0].Name != "spec" || got[1].Name != "version" {
-		t.Fatalf("spec command names = %#v, want [spec version]", []string{got[0].Name, got[1].Name})
+	if got[0].Name != "generate image" || got[1].Name != "spec" || got[2].Name != "version" {
+		t.Fatalf("spec command names = %#v, want [generate image spec version]", []string{got[0].Name, got[1].Name, got[2].Name})
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
