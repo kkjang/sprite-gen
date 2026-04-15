@@ -14,6 +14,26 @@ go build ./cmd/sprite-gen
 go test ./...
 ```
 
+## Commands
+
+Inspect a whole sheet and let the CLI guess a grid:
+
+```bash
+sprite-gen inspect sheet ./sheet.png
+```
+
+Inspect a single frame and report bbox and a simple feet pivot hint:
+
+```bash
+sprite-gen inspect frame ./frame.png --json
+```
+
+List the registered command surface:
+
+```bash
+sprite-gen spec --markdown
+```
+
 ## Install
 
 ```bash
