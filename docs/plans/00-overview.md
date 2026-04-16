@@ -49,8 +49,8 @@ Status legend: ✅ Done · 🚧 In progress · 📋 Planned
 | 02 | ✅ Done | CI + Releases | Lock in build/test/release before accumulating code. Mirrors [`godot-bridge`](https://github.com/kkjang/godot-bridge) patterns. Second-smallest PR. Merged in [#4](https://github.com/kkjang/sprite-gen/pull/4). | `02-ci-releases.md` |
 | 03 | 📋 Planned | LLM Provider Generate | Adds `generate image` + provider registry (first provider: OpenAI `gpt-image-1`). Establishes external-API and secret-handling patterns before image-processing code lands; unblocks dogfooding — every downstream plan can generate its own fixtures. | `03-llm-generate.md` |
 | 04 | ✅ Done | Inspect | Introduces the `pixel` package (foundational). Zero writes — read-only, easiest to test. First image-processing feature. Merged in [#6](https://github.com/kkjang/sprite-gen/pull/6). | `04-inspect.md` |
-| 05 | 📋 Planned | Palette ops | Introduces `palette` package. `palette extract` and `palette apply` are standalone-useful and unblock snap. | `05-palette.md` |
-| 06 | 📋 Planned | Pixel snap | Depends on `palette` (snap uses a target palette). Completes the "clean up a single PNG" story. | `06-snap.md` |
+| 05 | ✅ Done | Palette ops | Introduces `palette` package. `palette extract` and `palette apply` are standalone-useful and unblock snap. | `05-palette.md` |
+| 06 | ✅ Done | Pixel snap | Depends on `palette` (snap uses a target palette). Completes the "clean up a single PNG" story. | `06-snap.md` |
 | 07 | 📋 Planned | Slice | Introduces `sheet` and `manifest` packages. Turns one sheet into many frames + manifest — gateway to everything animation-related. | `07-slice.md` |
 | 08 | 📋 Planned | Segment subjects | Alternate path to `frames + manifest` from a *messy* AI-generated canvas: threshold alpha, connected-component label each subject, normalize into fixed-size cells with baseline alignment. Composes with align/diff/export unchanged. | `08-segment.md` |
 | 09 | 📋 Planned | Align + Diff | Frame-level ops that depend on slice or segment having run. Align fixes drift; diff verifies results. | `09-align-diff.md` |
