@@ -17,7 +17,7 @@ This plan introduces a segmentation path parallel to `slice`: detect each subjec
 **Out:**
 - Inter-frame drift correction across a sequence (that is `align frames`, plan 09 — `segment` positions each subject in its cell by anchor alone; fine-grained drift is a separate step)
 - Subject classification / recognition (e.g., "this blob is a character, that one is a shadow") — out of scope; callers use `--min-area`, sort order, and manual inspection to filter
-- Background subtraction beyond alpha thresholding (e.g., color-based keying) — the canvases we see from `gpt-image-1` already come on transparent backgrounds; colored-background canvases are a future enhancement
+- Background subtraction beyond alpha thresholding is handled by `prep background`; `segment subjects` still assumes callers have already removed fake or opaque backgrounds when necessary.
 - Vertical subject detection (subjects stacked top-to-bottom across an image) — the v1 heuristic sorts left-to-right only; multi-row detection can ride on plan 07's grid logic later
 
 ## Why this slot in the sequencing

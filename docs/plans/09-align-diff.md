@@ -1,5 +1,7 @@
 # Plan 09 — Align + Diff
 
+Status: implemented.
+
 ## Goal
 
 Fix sub-pixel drift between animation frames (the most common flaw in AI-generated walk cycles) and verify corrections with a pixel-level diff. Both commands operate on a directory of frames produced by plan 07 (`slice`) or plan 08 (`segment`).
@@ -12,7 +14,7 @@ Fix sub-pixel drift between animation frames (the most common flaw in AI-generat
 - `sprite-gen align frames DIR` — re-center all frames on a shared pivot
 - `sprite-gen diff frames A B` — pixel diff between two single frames
 - Manifest update: `align` writes pivot data back into `manifest.json`
-- Tests with fixture frame sets
+- Package and command tests with synthetic frame sets
 
 **Out:**
 - Batch diffing (diff one frame against all others in a set)
@@ -26,32 +28,15 @@ sprite-gen/
   cmd/sprite-gen/
     cmd_align.go                        # flag parsing for align frames
     cmd_diff.go                         # flag parsing for diff frames
+    cmd_align_test.go                   # synthetic drifting frame-set command tests
+    cmd_diff_test.go                    # synthetic diff command tests
   internal/
     align/
-      align.go                          # Pivot, Anchor, ComputePivot, Align
+      align.go                          # Pivot, Anchor, ComputePivot, AlignFrames
       align_test.go
     diff/
       diff.go                           # Diff, Result, DiffImage
       diff_test.go
-  testdata/
-    input/
-      align/
-        drifting_walk/                  # 4 frames with ±2px character drift
-          frame_000.png
-          frame_001.png
-          frame_002.png
-          frame_003.png
-          manifest.json
-    golden/
-      align/
-        drifting_walk_aligned/
-          frame_000.png
-          frame_001.png
-          frame_002.png
-          frame_003.png
-          manifest.json                 # with pivot fields populated
-      diff/
-        diff_overlay.png
 ```
 
 ## Align package design
@@ -85,9 +70,9 @@ func ComputePivot(img image.Image, anchor Anchor) Pivot
 // The target pivot is the component-wise median (not mean) of all frame
 // pivots — median is robust to outlier frames with unexpected content.
 //
-// Returned images are padded with transparent pixels as needed to
-// accommodate the translation without cropping content.
-func AlignFrames(imgs []image.Image, pivots []Pivot) (aligned []*image.NRGBA, target Pivot)
+// Returned images are written onto one shared transparent canvas so the
+// target pivot lands at the same pixel coordinate in every output frame.
+func AlignFrames(imgs []image.Image, pivots []Pivot) (aligned []*image.NRGBA, target Pivot, err error)
 ```
 
 ### Pivot computation details
@@ -105,13 +90,12 @@ a ground plane.
 ### Translation without cropping
 
 If a frame's pivot is at `(px, py)` and the target pivot is at `(tx, ty)`,
-the frame needs to shift by `(tx-px, ty-py)`. New canvas size:
-`(original_w + |dx|, original_h + |dy|)`. The frame is drawn at the
-appropriate offset using `image/draw`.
+the frame needs to shift by `(tx-px, ty-py)`. The implementation computes the
+union of all translated frame bounds and uses that union as one shared output
+canvas. Each frame is then drawn at its translated offset using `image/draw`.
 
-Frame size may grow across frames in the set. Downstream tools (export,
-display) must tolerate variable frame sizes within a set. The manifest
-records each frame's final W/H.
+All aligned frames therefore share the same final W/H, and the manifest records
+that common size plus a common output-space pivot for each frame.
 
 ## Diff package design
 
@@ -159,6 +143,7 @@ Behavior:
 4. Call `align.AlignFrames`.
 5. Save each aligned frame.
 6. Update (or create) `manifest.json` in the output dir with pivot fields populated.
+7. Preserve each frame's source-space `rect` from the input manifest when one exists.
 
 Text output:
 
@@ -175,7 +160,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/drifting_walk/align/",
+    "out": "out/drifting_walk/align",
     "anchor": "feet",
     "target_pivot": {"x": 16, "y": 31},
     "frames": [
@@ -203,6 +188,8 @@ Behavior:
 2. Call `diff.Compare(a, b, tolerance)`.
 3. Call `diff.DiffImage(a, b, tolerance)`.
 4. Save diff overlay PNG.
+5. If the image sizes differ, compare on a transparent-padded union canvas and
+   report the size mismatch in structured output.
 
 JSON output:
 
@@ -215,7 +202,11 @@ JSON output:
     "percent": 4.59,
     "bbox": {"x": 3, "y": 5, "w": 18, "h": 22},
     "tolerance": 0,
-    "out": "out/frame_000_vs_frame_001/diff/diff.png"
+    "out": "out/frame_000_vs_frame_001/diff/diff.png",
+    "size_mismatch": {
+      "a": {"w": 32, "h": 32},
+      "b": {"w": 34, "h": 32}
+    }
   }
 }
 ```
@@ -229,37 +220,35 @@ JSON output:
 - `ComputePivot` with `AnchorCentroid` on a uniform solid square returns the
   center pixel.
 - `AlignFrames` on two frames offset by (0,2) and (0,-2) returns frames where
-  both pivots coincide, with one frame padded at top and one at bottom.
+  both pivots coincide on a shared canvas.
 - `AlignFrames` on already-aligned frames is idempotent (no translation applied).
-- Golden: `AlignFrames(drifting_walk/*.png, AnchorFeet)` matches `golden/align/drifting_walk_aligned/*.png`.
 
 `internal/diff/diff_test.go`:
 - `Compare(img, img, 0)` returns `DiffPixels == 0`.
 - `Compare(all_red, all_blue, 0)` returns `DiffPixels == total_pixels`.
 - `Compare` with `tolerance=10` ignores differences ≤ 10 per channel.
 - `DiffImage` returns a PNG where pixels identified as differing are red.
-- Golden: `DiffImage(frame_000.png, frame_001.png, 0)` matches `golden/diff/diff_overlay.png`.
 
 Command-level tests:
-- `align frames testdata/input/align/drifting_walk --anchor feet --json` → envelope with 4 frames, `target_pivot.y > 0`.
+- `align frames <synthetic-dir> --anchor feet --json` → envelope with 4 frames, `target_pivot.y > 0`.
 - `align frames` on a non-existent dir → exit non-zero, actionable error.
-- `diff frames testdata/.../frame_000.png testdata/.../frame_001.png --json` → envelope with `diff_pixels > 0`.
+- `diff frames <synthetic-a.png> <synthetic-b.png> --json` → envelope with `diff_pixels > 0`.
 - `diff frames A A --json` → `diff_pixels == 0`, `percent == 0`.
 - `diff frames` with mismatched sizes → exit 0 but report size mismatch in JSON.
 
 ## Acceptance criteria
 
-1. `go test ./...` passes including golden frame comparisons.
-2. Running on drifting fixture:
+1. `go test ./...` passes.
+2. Running on a drifting frame set:
    ```bash
-   sprite-gen align frames testdata/input/align/drifting_walk --anchor feet
-   sprite-gen diff frames out/drifting_walk/align/frame_000.png \
-                          out/drifting_walk/align/frame_001.png
+   sprite-gen align frames frames/ --anchor feet
+   sprite-gen diff frames out/<subject>/align/frame_000.png \
+                          out/<subject>/align/frame_001.png
    ```
    The aligned frames have smaller `diff_pixels` than the unaligned originals.
 3. Manifest in the output dir has `pivot` fields set for each frame.
 4. `--dry-run` on `align frames` exits 0 with no files created.
-5. `sprite-gen spec` shows twelve commands.
+5. `sprite-gen spec` shows fourteen commands.
 
 ## Suggested commit message
 

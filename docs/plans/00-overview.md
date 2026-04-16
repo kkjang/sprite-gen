@@ -18,7 +18,7 @@ Commands are grouped by **what they read** and **what they produce**:
 | Nothing | Metadata | `version`, `spec` |
 | Prompt | One image | `generate image` |
 | One image | Report (no files) | `inspect sheet`, `inspect frame` |
-| One image | One image | `snap pixels`, `snap scale`, `prep alpha`, `palette apply` |
+| One image | One image | `snap pixels`, `snap scale`, `prep alpha`, `prep background`, `palette apply` |
 | One image | Palette file | `palette extract` |
 | One image | Many images + manifest | `slice grid`, `slice auto`, `segment subjects` |
 | Many images | Many images + manifest | `align frames` |
@@ -53,13 +53,14 @@ Status legend: ✅ Done · 🚧 In progress · 📋 Planned
 | 06 | ✅ Done | Pixel snap | Depends on `palette` (snap uses a target palette). Completes the "clean up a single PNG" story. | `06-snap.md` |
 | 07 | ✅ Done | Slice | Introduces `sheet` and `manifest` packages. Turns one sheet into many frames + manifest — gateway to everything animation-related. | `07-slice.md` |
 | 08 | ✅ Done | Segment subjects | Alternate path to `frames + manifest` from a *messy* AI-generated canvas: threshold alpha, connected-component label each subject, normalize into fixed-size cells with baseline alignment. Composes with align/diff/export unchanged. | `08-segment.md` |
-| 09 | 📋 Planned | Align + Diff | Frame-level ops that depend on slice or segment having run. Align fixes drift; diff verifies results. | `09-align-diff.md` |
+| 08.5 | ✅ Done | Background cleanup | Adds `prep background` for fake transparency and opaque generated backgrounds using extensible cleanup methods (`key`, `edge`). | `08.5-background-cleanup.md` |
+| 09 | ✅ Done | Align + Diff | Frame-level ops that depend on slice or segment having run. Align fixes drift; diff verifies results. | `09-align-diff.md` |
 | 10 | 📋 Planned | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `10-export-pipeline.md` |
 | 11 | 📋 Planned | Godot export formats | First engine-specific formats: `godot-spriteframes` and `godot-atlas`. Validates that the registry extends cleanly. | `11-godot-export.md` |
 
 ## Pipeline this builds toward
 
-After all eleven plans are merged, an agent can run the full pipeline end-to-end without leaving the CLI. There are two canonical entry paths into the frame-set world, picked by input shape:
+After all twelve plans are merged, an agent can run the full pipeline end-to-end without leaving the CLI. There are two canonical entry paths into the frame-set world, picked by input shape:
 
 ### Happy path — clean sheet input
 
@@ -68,11 +69,12 @@ After all eleven plans are merged, an agent can run the full pipeline end-to-end
 sprite-gen generate image "knight walk cycle, 4 frames, 32x32, pixel art" \
     --n 1 --size 1024x1024 --out knight.png
 
-# Clean up (plans 05, 06, 07)
+# Clean up (plans 05, 06, 07, 08.5)
 sprite-gen snap scale   knight.png --factor auto
 sprite-gen palette extract out/knight/snap/native.png --max 16
 sprite-gen snap pixels  out/knight/snap/native.png --palette out/knight/palette/extracted-16.hex
-sprite-gen prep alpha   out/knight/snap/snapped.png --alpha-threshold 128
+sprite-gen prep background out/knight/snap/snapped.png --method auto
+sprite-gen prep alpha   out/knight/prep/background.png --alpha-threshold 128
 
 # Slice into frames (plan 07)
 sprite-gen slice grid   out/knight/prep/clean.png --cols 4 --rows 1 --out frames/
@@ -87,15 +89,18 @@ sprite-gen export       frames/ --format godot-spriteframes --anim walk:*.png --
 
 ### Messy path — real `gpt-image-1` output
 
-`gpt-image-1` tends to ignore prompted sprite-sheet constraints: subjects end up scattered across an oversized canvas with glow halos and soft edges. `segment subjects` (plan 08) salvages these:
+`gpt-image-1` tends to ignore prompted sprite-sheet constraints: subjects end up scattered across an oversized canvas with glow halos, soft edges, and sometimes fully opaque fake backgrounds. `segment subjects` (plan 08) salvages these once the background is actually transparent:
 
 ```bash
 # Inspect to diagnose the mess
 sprite-gen inspect sheet knight.png --json
-#   -> huge bbox, high aa_score, many fractional-alpha pixels
+#   -> huge bbox, high aa_score, many fractional-alpha pixels, or fully opaque fake background
+
+# Remove an opaque fake background when needed
+sprite-gen prep background knight.png --method auto
 
 # Segment the canvas directly into normalized frames (plan 08)
-sprite-gen segment subjects knight.png --cell 32x32 --expected 4 --anchor feet \
+sprite-gen segment subjects out/knight/prep/background.png --cell 32x32 --expected 4 --anchor feet \
     --out frames/
 
 # Continue with the same align → export pipeline
@@ -128,12 +133,14 @@ sprite-gen/
     cmd_segment.go
     cmd_snap.go
     cmd_palette.go
+    cmd_prep.go
     cmd_align.go
     cmd_diff.go
     cmd_export.go
     main_test.go
   internal/
     pixel/               # load/save PNG, scale, bbox, alpha, alpha masks, morphology
+    background/          # fake/opaque background removal methods
     palette/             # extract, quantize, snap, read/write palette files
     sheet/               # grid detection, slice, pack
     segment/             # connected-component labeling, cell normalization
