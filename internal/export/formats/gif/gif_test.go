@@ -43,6 +43,14 @@ func TestGIFExportWritesAnimatedGIF(t *testing.T) {
 	if decoded.Delay[0] != 13 {
 		t.Fatalf("decoded.Delay[0] = %d, want 13 centiseconds for 8fps", decoded.Delay[0])
 	}
+	if len(decoded.Disposal) != 4 {
+		t.Fatalf("len(decoded.Disposal) = %d, want 4", len(decoded.Disposal))
+	}
+	for i, disposal := range decoded.Disposal {
+		if disposal != stdgif.DisposalBackground {
+			t.Fatalf("decoded.Disposal[%d] = %d, want %d", i, disposal, stdgif.DisposalBackground)
+		}
+	}
 }
 
 func TestGIFExportScale2(t *testing.T) {
