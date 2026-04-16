@@ -49,6 +49,14 @@ func TestDefaultPrepBackgroundOutPath(t *testing.T) {
 	}
 }
 
+func TestDefaultNormalizeDetailOutPath(t *testing.T) {
+	inPath := filepath.Join("out", "slime3", "prep", "clean.png")
+	want := filepath.Join("out", "slime3", "normalize", "detail.png")
+	if got := defaultNormalizeDetailOutPath(inPath); got != want {
+		t.Fatalf("defaultNormalizeDetailOutPath() = %q, want %q", got, want)
+	}
+}
+
 func TestDefaultAlignOutDir(t *testing.T) {
 	inPath := filepath.Join("out", "slime3", "slice")
 	want := filepath.Join("out", "slime3", "align")

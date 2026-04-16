@@ -15,12 +15,18 @@ flowchart TD
 
     C --> E[prep alpha]
     D --> F[prep background]
+    A --> R[normalize detail]
+    B --> R
+    E --> R[normalize detail]
+    F --> R
     A --> G[slice grid or slice auto]
     B --> H[segment subjects]
     E --> G
     E --> H
     F --> G
     F --> H
+    R --> G
+    R --> H
 
     G --> I[Frame-set output<br/>frame_*.png + manifest.json]
     H --> I
@@ -121,6 +127,18 @@ Detect and undo integer nearest-neighbor upscaling:
 sprite-gen snap scale ./sheet.png --factor auto
 ```
 
+Normalize a single PNG toward a project detail target without overloading
+`snap scale`:
+
+```bash
+sprite-gen normalize detail ./sheet.png --target-height 48
+```
+
+`normalize detail` is an optional project-consistency step for single-image
+inputs. It only chooses integer downscale factors, measures the visible subject
+bbox with `--alpha-threshold`, and leaves the image unchanged when the requested
+target would otherwise require upscaling.
+
 Slice a clean sprite sheet into per-frame PNGs plus `manifest.json`:
 
 ```bash
@@ -179,13 +197,15 @@ problem.
 
 ```bash
 # Transparent messy canvas
-sprite-gen segment subjects ./walk.png --anchor feet
+sprite-gen normalize detail ./walk.png --target-height 48
+sprite-gen segment subjects ./out/walk/normalize/detail.png --anchor feet
 sprite-gen align frames ./out/walk/segment --anchor feet
 sprite-gen export ./out/walk/align --format gif --fps 8 --scale 2
 
 # Opaque fake background first
 sprite-gen prep background ./walk.png --method auto
-sprite-gen segment subjects ./out/walk/prep/background.png --anchor feet
+sprite-gen normalize detail ./out/walk/prep/background.png --target-height 48
+sprite-gen segment subjects ./out/walk/normalize/detail.png --anchor feet
 sprite-gen align frames ./out/walk/segment --anchor feet
 sprite-gen export ./out/walk/align --format sheet-png --cols 4
 ```
@@ -200,6 +220,7 @@ Reasons to prefer it:
 - fewer destructive operations
 - faster iteration
 - less chance of flattening deliberate shading or changing the look of the art
+- `normalize detail` can optionally make mixed-source assets converge on a more consistent visible subject height before slicing or segmenting
 
 Full pipeline: use this when the image also has cleanup or palette problems.
 
@@ -208,7 +229,8 @@ sprite-gen prep background ./walk.png --method auto
 sprite-gen snap scale ./out/walk/prep/background.png --factor auto
 sprite-gen palette extract ./out/walk/snap/native.png --max 32
 sprite-gen snap pixels ./out/walk/snap/native.png --palette ./out/walk/palette/extracted-32.hex
-sprite-gen segment subjects ./out/walk/snap/snapped.png --anchor feet
+sprite-gen normalize detail ./out/walk/snap/snapped.png --target-height 48
+sprite-gen segment subjects ./out/walk/normalize/detail.png --anchor feet
 sprite-gen align frames ./out/walk/segment --anchor feet
 sprite-gen export ./out/walk/align --format gif --fps 8 --scale 2
 ```
@@ -226,6 +248,7 @@ Reasons to prefer it:
 
 Caveats:
 - `snap scale` only helps when the source was truly integer-upscaled; on native-size art it is often a no-op
+- `normalize detail` is intentional style normalization, not corrective upscale detection; use it only when you want assets to converge toward a shared detail budget
 - `palette extract` learns from the current pixels, so if the source still contains edge contamination or background residue, the extracted palette can preserve those bad colors
 - on fully opaque generated images, run `prep background` first and visually inspect the result before extracting a palette
 - if you see a bright fringe or white outer layer after the full pipeline, the cleanup step likely left contaminated edge colors behind; try improving background removal first or use a curated palette instead of extracting one from the dirty image
