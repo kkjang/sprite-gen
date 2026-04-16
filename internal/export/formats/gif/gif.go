@@ -47,6 +47,7 @@ func (GIF) Export(ctx *internalexport.Context) (*internalexport.Result, error) {
 	animation := &stdgif.GIF{
 		Image:           make([]*image.Paletted, len(ctx.Frames)),
 		Delay:           make([]int, len(ctx.Frames)),
+		Disposal:        make([]byte, len(ctx.Frames)),
 		BackgroundIndex: 0,
 		LoopCount:       -1,
 	}
@@ -66,9 +67,17 @@ func (GIF) Export(ctx *internalexport.Context) (*internalexport.Result, error) {
 		}
 		animation.Image[i] = paletted(img)
 		animation.Delay[i] = delay
-		frameW = img.Bounds().Dx()
-		frameH = img.Bounds().Dy()
+		// Clear transparent pixels from earlier frames in animated previews.
+		animation.Disposal[i] = stdgif.DisposalBackground
+		if w := img.Bounds().Dx(); w > frameW {
+			frameW = w
+		}
+		if h := img.Bounds().Dy(); h > frameH {
+			frameH = h
+		}
 	}
+	animation.Config.Width = frameW
+	animation.Config.Height = frameH
 
 	verb := "wrote"
 	if ctx.DryRun {
