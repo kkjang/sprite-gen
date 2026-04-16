@@ -51,7 +51,7 @@ Status legend: ✅ Done · 🚧 In progress · 📋 Planned
 | 04 | ✅ Done | Inspect | Introduces the `pixel` package (foundational). Zero writes — read-only, easiest to test. First image-processing feature. Merged in [#6](https://github.com/kkjang/sprite-gen/pull/6). | `04-inspect.md` |
 | 05 | ✅ Done | Palette ops | Introduces `palette` package. `palette extract` and `palette apply` are standalone-useful and unblock snap. | `05-palette.md` |
 | 06 | ✅ Done | Pixel snap | Depends on `palette` (snap uses a target palette). Completes the "clean up a single PNG" story. | `06-snap.md` |
-| 07 | 📋 Planned | Slice | Introduces `sheet` and `manifest` packages. Turns one sheet into many frames + manifest — gateway to everything animation-related. | `07-slice.md` |
+| 07 | ✅ Done | Slice | Introduces `sheet` and `manifest` packages. Turns one sheet into many frames + manifest — gateway to everything animation-related. | `07-slice.md` |
 | 08 | 📋 Planned | Segment subjects | Alternate path to `frames + manifest` from a *messy* AI-generated canvas: threshold alpha, connected-component label each subject, normalize into fixed-size cells with baseline alignment. Composes with align/diff/export unchanged. | `08-segment.md` |
 | 09 | 📋 Planned | Align + Diff | Frame-level ops that depend on slice or segment having run. Align fixes drift; diff verifies results. | `09-align-diff.md` |
 | 10 | 📋 Planned | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `10-export-pipeline.md` |
