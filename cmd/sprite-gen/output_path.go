@@ -68,6 +68,8 @@ func isOutputStage(name string) bool {
 		return true
 	case "prep":
 		return true
+	case "resize":
+		return true
 	default:
 		return false
 	}

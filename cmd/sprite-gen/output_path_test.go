@@ -25,6 +25,13 @@ func TestOutputSubjectFromSubjectFirstOutPath(t *testing.T) {
 	}
 }
 
+func TestOutputSubjectRecognizesResizeStage(t *testing.T) {
+	inPath := filepath.Join("out", "knight", "resize", "frame_000.png")
+	if got := outputSubject(inPath); got != "knight" {
+		t.Fatalf("outputSubject(%q) = %q, want %q", inPath, got, "knight")
+	}
+}
+
 func TestDefaultPaletteExtractOutPath(t *testing.T) {
 	inPath := filepath.Join("out", "slime3", "snap", "native.png")
 	want := filepath.Join("out", "slime3", "palette", "extracted-16.hex")
