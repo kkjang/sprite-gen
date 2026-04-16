@@ -4,15 +4,19 @@
 
 Introduce the format registry and the `export` command. Ship two engine-agnostic formats (`gif` for preview, `sheet-png` for packed sprite sheet) to prove the registry extends cleanly before adding engine-specific formats in plan 11.
 
+Implemented with two verified adjustments from the original draft:
+- `sheet-png` writes a single PNG artifact only. It does not emit a companion `manifest.json` because `--out` should name the artifact itself.
+- `sheet-png` accepts mixed-size frame sets and pads them into max-size cells, so it is a terminal export artifact rather than a lossless trimmed-frame serialization.
+
 ## Scope
 
 **In:**
 - `internal/export` package: `Format` interface + registry, `ExportContext` struct
 - `internal/export/formats/gif`: animated GIF preview
-- `internal/export/formats/sheetpng`: pack frames back into a sprite sheet + manifest
+- `internal/export/formats/sheetpng`: pack frames back into a single sprite sheet PNG
 - `sprite-gen export DIR --format=<name>` — single convergence point for all output formats
 - `sprite-gen export DIR --list-formats` — print available formats (mirrors `spec` but format-scoped)
-- Tests: registry wiring, GIF output, sheet-png round-trip
+- Tests: registry wiring, GIF output, sheet-png packing behavior
 
 **Out:**
 - Any engine-specific formats (plan 11)
@@ -35,12 +39,6 @@ sprite-gen/
         sheetpng/
           sheetpng.go                   # Format impl: packed sprite sheet
           sheetpng_test.go
-  testdata/
-    golden/
-      export/
-        walk_preview.gif
-        walk_sheet.png
-        walk_sheet_manifest.json
 ```
 
 ## Export package design
@@ -58,19 +56,18 @@ type Format interface {
     Name() string
     // Description is shown in sprite-gen export --list-formats.
     Description() string
-    // Export writes output files using the provided context.
-    Export(ctx *Context) error
+    // Export writes output files using the provided context and returns
+    // a command-friendly summary for text/JSON output.
+    Export(ctx *Context) (*Result, error)
 }
 
-var registry = map[string]Format{}
+type Result struct {
+    Text string
+    Data any
+}
 
 // Register adds a format. Called from each format's init().
-func Register(f Format) {
-    if _, exists := registry[f.Name()]; exists {
-        panic("export: duplicate format: " + f.Name())
-    }
-    registry[f.Name()] = f
-}
+func Register(f Format)
 
 // Get returns the named format or an error.
 func Get(name string) (Format, error)
@@ -84,23 +81,22 @@ func All() []Format
 ```go
 // Context carries everything a Format needs to produce output.
 type Context struct {
-    // FrameDir is the source directory of frame PNGs.
     FrameDir string
-    // Manifest is pre-loaded (may be nil if no manifest.json exists;
-    // formats should handle both cases).
     Manifest *manifest.Manifest
-    // Frames is the ordered list of frame image paths.
-    Frames []string
-    // Options contains format-specific key-value pairs parsed from
-    // extra flags (--fps, --cols, --loop, etc.)
+    Frames []Frame
     Options map[string]string
-    // OutPath is the resolved output path (file or dir, format decides).
     OutPath string
-    // DryRun when true means write nothing.
     DryRun bool
-    // Stdout/Stderr for progress messages.
-    Stdout io.Writer
-    Stderr io.Writer
+    Format string
+    Subject string
+    ManifestPath string
+}
+
+type Frame struct {
+    Index int
+    Path  string
+    Rect  manifest.Rect
+    Image *image.NRGBA
 }
 ```
 
@@ -131,16 +127,17 @@ func init() { export.Register(GIF{}) }
 
 Implementation outline:
 1. Load each frame image.
-2. For each frame: quantize to ≤ 256 colors (stdlib `image/gif` requires
-   a paletted image). Use the palette from the manifest if present;
-   otherwise quantize with `palette.Extract`.
+2. For each frame: quantize to a frame-local palette with up to 255 visible
+   colors plus transparent index 0. Palette data is derived directly from the
+   frame PNGs; it is not stored in `manifest.json`.
 3. Build a `*gif.GIF` with per-frame delays derived from `fps`.
 4. Upscale each frame by `scale` (integer NN) if scale > 1.
 5. Write with `gif.EncodeAll`.
 
 The GIF format has a 256-color limit per frame. For sprites with > 256
 colors, quantize per-frame (each frame can have its own palette in GIF).
-This is the default behavior of `gif.EncodeAll`.
+Because GIF delays are stored in centiseconds, the exporter rounds `fps` to the
+nearest representable frame delay.
 
 ### `internal/export/formats/sheetpng/sheetpng.go`
 
@@ -154,8 +151,8 @@ package sheetpng
 type SheetPNG struct{}
 
 func (s SheetPNG) Name() string        { return "sheet-png" }
-func (s SheetPNG) Description() string { return "Pack frames into a sprite sheet PNG + manifest" }
-func (s SheetPNG) Export(ctx *export.Context) error { ... }
+func (s SheetPNG) Description() string { return "Pack frames into a sprite sheet PNG" }
+func (s SheetPNG) Export(ctx *export.Context) (*export.Result, error) { ... }
 
 func init() { export.Register(SheetPNG{}) }
 ```
@@ -165,12 +162,10 @@ Implementation outline:
 2. Pack into a grid of `--cols` columns.
 3. Draw each frame at its grid position using `image/draw`.
 4. Write the sheet PNG.
-5. Write a `manifest.json` alongside it with `Rect` fields pointing into
-   the sheet (so `slice grid` can recover the original frames from it).
 
-The round-trip `slice grid → export sheet-png → slice grid` should
-produce pixel-identical frames to the originals (within rounding of
-cell padding).
+When input frames are mixed-size, `sheet-png` pads them into max-size cells.
+That preserves visible pixels and frame order, but does not promise exact
+trim-preserving round-trip behavior through `slice grid`.
 
 ## Command design
 
@@ -184,6 +179,7 @@ Flags:
 - `--cols N`: passed to sheet-png format
 - `--scale N` (default 1): pixel upscale for gif preview
 - `--loop` (default true): for gif
+- `--padding N` (default 0): for sheet-png
 - global `--json`
 
 Behavior:
@@ -195,7 +191,7 @@ Behavior:
 Text output (varies by format, shown for gif):
 
 ```
-wrote: out/walk_4x1/export/walk_preview.gif (4 frames, 8fps, 500ms total)
+wrote: out/walk_4x1/export/walk_4x1_preview.gif (4 frames, 8 fps target, 520ms total)
 ```
 
 JSON output:
@@ -205,10 +201,13 @@ JSON output:
   "ok": true,
   "data": {
     "format": "gif",
-    "out": "out/walk_4x1/export/walk_preview.gif",
+    "out": "out/walk_4x1/export/walk_4x1_preview.gif",
     "frames": 4,
     "fps": 8,
-    "duration_ms": 500,
+    "frame_delay_cs": 13,
+    "duration_ms": 520,
+    "scale": 1,
+    "loop": true,
     "dry_run": false
   }
 }
@@ -220,7 +219,7 @@ Prints available formats without running an export:
 
 ```
 gif         Animated GIF preview (for visual verification)
-sheet-png   Pack frames into a sprite sheet PNG + manifest
+sheet-png   Pack frames into a sprite sheet PNG
 ```
 
 With `--json`:
@@ -229,12 +228,12 @@ With `--json`:
 {
   "ok": true,
   "data": {
-    "formats": [
-      {"name": "gif", "description": "Animated GIF preview (for visual verification)"},
-      {"name": "sheet-png", "description": "Pack frames into a sprite sheet PNG + manifest"}
-    ]
+      "formats": [
+        {"name": "gif", "description": "Animated GIF preview (for visual verification)"},
+        {"name": "sheet-png", "description": "Pack frames into a sprite sheet PNG"}
+      ]
+    }
   }
-}
 ```
 
 ## Testing
@@ -246,27 +245,26 @@ With `--json`:
 - `Get` on unknown name returns an error naming available formats.
 
 `internal/export/formats/gif`:
-- Exporting a 4-frame set at 8fps produces a GIF with 4 frames and 125ms delay.
+- Exporting a 4-frame set at 8fps produces a GIF with 4 frames and 13cs delay.
 - GIF frame count matches input frame count.
-- Golden: export of `walk_4x1/` frames matches `golden/export/walk_preview.gif`.
 - `--scale 2` on a 32x32 frame set produces 64x64 GIF frames.
 - `--dry-run` produces no file.
 
 `internal/export/formats/sheetpng`:
-- Round-trip: `sheetpng.Export` → `slice grid` produces pixel-identical frames.
 - Sheet dimensions: 4 frames, 32x32 each, `--cols 4` → sheet 128x32.
-- Golden: sheet PNG + manifest match golden fixtures.
+- Mixed-size inputs are padded into max-size cells and reported as `mixed_sizes: true`.
+- `--padding 2` on a 2x2 10x10 frame set produces a 22x22 sheet.
 - `--dry-run` produces no file.
 
 Command-level tests:
-- `export testdata/golden/slice/walk_4x1 --format gif --json` → envelope with `frames: 4`.
-- `export testdata/golden/slice/walk_4x1 --format sheet-png --cols 4 --json` → envelope with `out` ending in `.png`.
+- `export DIR --format gif --json` → envelope with `frames: 4`.
+- `export DIR --format sheet-png --cols 4 --json` → envelope with `out` ending in `.png`.
 - `export dir --format unknown` → exit non-zero, error lists valid formats.
 - `export dir --list-formats --json` → envelope with `formats` array.
 
 ## Acceptance criteria
 
-1. `go test ./...` passes including golden comparisons.
+1. `go test ./...` passes.
 2. Full chain:
    ```bash
    sprite-gen slice grid testdata/input/slice/walk_4x1.png --cols 4
@@ -275,9 +273,9 @@ Command-level tests:
    ```
    All three commands exit 0.
 3. The GIF is viewable (valid GIF89a header, correct frame count).
-4. The sheet-png export followed by `slice grid` round-trips to pixel-identical frames.
+4. `sheet-png` writes exactly one PNG artifact at `--out`.
 5. `sprite-gen export --list-formats` shows exactly two formats.
-6. `sprite-gen spec` shows fourteen commands.
+6. `sprite-gen spec` shows sixteen commands.
 7. No new non-stdlib dependencies (stdlib `image/gif` handles GIF encoding).
 
 ## Suggested commit message
@@ -297,9 +295,9 @@ and sheet-png (repack). Plan 11 adds engine-specific formats.
   self-register in `init()` and require zero changes to `cmd_export.go`
   or `internal/export/export.go` — the registry is the extension point.
 - The GIF quantization in this plan is per-frame (each frame has its own
-  256-color palette). If visual quality is poor on frames that share many
-  colors, a global palette mode can be added later without changing the
-  interface.
+  paletted image with transparent index 0). If visual quality is poor on
+  frames that share many colors, a global palette mode can be added later
+  without changing the interface.
 - `ExportContext.Options` is a `map[string]string` on purpose: it avoids
   a combinatorial flag interface while keeping format-specific options
   self-documenting within each format's source file. If a format needs a

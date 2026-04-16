@@ -115,6 +115,85 @@ sprite-gen align frames ./out/knight/slice --anchor feet
 `align frames` writes every output frame onto a shared canvas and updates
 `manifest.json` so each frame has the same output-space `pivot`.
 
+Export an aligned or sliced frame-set to an animated GIF preview:
+
+```bash
+sprite-gen export ./out/knight/align --format gif --fps 8 --scale 2
+```
+
+Pack a frame-set back into a single sprite-sheet PNG:
+
+```bash
+sprite-gen export ./out/knight/align --format sheet-png --cols 4
+```
+
+Use `sprite-gen export --list-formats` to discover registered output formats.
+`sheet-png` writes only the PNG artifact named by `--out`; it does not emit a
+companion `manifest.json`. When input frames have mixed sizes, it pads them into
+the largest cell size in the packed sheet.
+
+## Choosing A Pipeline
+
+There are two practical cleanup paths before `export`.
+
+Short pipeline: use this when the image mostly has a layout problem, not a color
+problem.
+
+```bash
+# Transparent messy canvas
+sprite-gen segment subjects ./walk.png --anchor feet
+sprite-gen align frames ./out/walk/segment --anchor feet
+sprite-gen export ./out/walk/align --format gif --fps 8 --scale 2
+
+# Opaque fake background first
+sprite-gen prep background ./walk.png --method auto
+sprite-gen segment subjects ./out/walk/prep/background.png --anchor feet
+sprite-gen align frames ./out/walk/segment --anchor feet
+sprite-gen export ./out/walk/align --format sheet-png --cols 4
+```
+
+Use the short pipeline when:
+- the background is already truly transparent, or `prep background` removes it cleanly
+- frame detection and alignment are the main problems
+- colors already look stable enough for your target engine
+- you want to preserve the source colors as much as possible
+
+Reasons to prefer it:
+- fewer destructive operations
+- faster iteration
+- less chance of flattening deliberate shading or changing the look of the art
+
+Full pipeline: use this when the image also has cleanup or palette problems.
+
+```bash
+sprite-gen prep background ./walk.png --method auto
+sprite-gen snap scale ./out/walk/prep/background.png --factor auto
+sprite-gen palette extract ./out/walk/snap/native.png --max 32
+sprite-gen snap pixels ./out/walk/snap/native.png --palette ./out/walk/palette/extracted-32.hex
+sprite-gen segment subjects ./out/walk/snap/snapped.png --anchor feet
+sprite-gen align frames ./out/walk/segment --anchor feet
+sprite-gen export ./out/walk/align --format gif --fps 8 --scale 2
+```
+
+Use the full pipeline when:
+- the image has glow, soft anti-aliased fringes, or many near-duplicate colors
+- animation frames shimmer because the generator drifted between similar colors
+- the GIF preview still looks noisy after a short pipeline run
+- you want a stricter, game-ready limited palette before export
+
+Reasons to prefer it:
+- `snap pixels` can remove low-alpha junk and collapse noisy colors into a stable palette
+- limited-palette cleanup often makes GIF previews look cleaner and easier to review
+- consistent colors across frames usually survive later export steps better
+
+Caveats:
+- `snap scale` only helps when the source was truly integer-upscaled; on native-size art it is often a no-op
+- `palette extract` learns from the current pixels, so if the source still contains edge contamination or background residue, the extracted palette can preserve those bad colors
+- on fully opaque generated images, run `prep background` first and visually inspect the result before extracting a palette
+- if you see a bright fringe or white outer layer after the full pipeline, the cleanup step likely left contaminated edge colors behind; try improving background removal first or use a curated palette instead of extracting one from the dirty image
+
+In practice: start with the short pipeline. Move to the full pipeline when visual review shows color noise, edge haze, or palette drift that the short pipeline does not fix.
+
 Compare two frame PNGs and write a red-overlay diff image:
 
 ```bash

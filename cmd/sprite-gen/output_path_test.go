@@ -65,3 +65,19 @@ func TestDefaultDiffOutPath(t *testing.T) {
 		t.Fatalf("defaultDiffOutPath() = %q, want %q", got, want)
 	}
 }
+
+func TestDefaultExportOutPathGIF(t *testing.T) {
+	inPath := filepath.Join("out", "slime3", "align")
+	want := filepath.Join("out", "slime3", "export", "slime3_preview.gif")
+	if got := defaultExportOutPath(inPath, "gif"); got != want {
+		t.Fatalf("defaultExportOutPath() = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultExportOutPathSheetPNG(t *testing.T) {
+	inPath := filepath.Join("out", "slime3", "segment")
+	want := filepath.Join("out", "slime3", "export", "slime3_sheet.png")
+	if got := defaultExportOutPath(inPath, "sheet-png"); got != want {
+		t.Fatalf("defaultExportOutPath() = %q, want %q", got, want)
+	}
+}
