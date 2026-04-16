@@ -25,12 +25,12 @@ This plan introduces a segmentation path parallel to `slice`: detect each subjec
 | # | Plan | Why `segment` sits here |
 |---|---|---|
 | 06 | snap | Introduces alpha thresholding primitives (`ThresholdAlpha`, `CountFractional`). `segment` reuses them. |
-| 07 | slice | Introduces the `manifest` package and `pixel.Crop`. `segment` reuses both. |
+| 07 | slice | Introduces the `manifest` package, `pixel.Crop`, and explicit `prep alpha` cleanup. `segment` reuses the shared primitives but does not require callers to run prep first. |
 | **08** | **segment (this plan)** | **Alternate path from one image to `frames + manifest`: connected components instead of a grid.** |
 | 09 | align + diff | Operates on any `frames + manifest` directory — works on the output of either `slice` or `segment` with no changes. |
 | 10 | export | Same — consumes a frame directory regardless of how it was produced. |
 
-Placing `segment` after `slice` keeps `slice` as the smallest possible PR and lets `segment` build on the manifest + crop primitives introduced there. Both commands produce interchangeable outputs; callers pick by input shape (clean sheet → `slice`, messy canvas → `segment`).
+Placing `segment` after `slice` keeps `slice` as the smallest possible PR and lets `segment` build on the manifest + crop primitives introduced there. Both commands produce interchangeable outputs; callers pick by input shape (clean sheet → `prep`/`slice`, messy canvas → `segment`).
 
 ## File plan
 
@@ -156,7 +156,7 @@ func MorphErode(mask *image.Alpha, iterations int) *image.Alpha
 func MorphDilate(mask *image.Alpha, iterations int) *image.Alpha
 ```
 
-These live in `internal/pixel` because they are alpha-channel operations and symmetric to the existing `ThresholdAlpha` / `CountFractional` from plan 06. `internal/segment` depends on `pixel` but not the other way around.
+These live in `internal/pixel` because they are alpha-channel operations and symmetric to the existing `ThresholdAlpha` / `CountFractional` from plan 06 and the explicit `prep alpha` command introduced in plan 07. `internal/segment` depends on `pixel` but not the other way around. `segment subjects` still owns its threshold-to-mask step internally so callers do not need a separate prep pass to make segmentation work.
 
 ### `internal/pixel/place.go`
 

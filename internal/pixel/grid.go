@@ -13,9 +13,17 @@ type Grid struct {
 }
 
 func GuessGrid(img image.Image) Grid {
+	return GuessGridWithMinGap(img, 1)
+}
+
+func GuessGridWithMinGap(img image.Image, minGap int) Grid {
+	if minGap < 1 {
+		minGap = 1
+	}
+
 	bounds := img.Bounds()
-	colBands := occupiedBands(bounds.Dx(), func(i int) bool { return columnHasAlpha(img, bounds.Min.X+i, 0) })
-	rowBands := occupiedBands(bounds.Dy(), func(i int) bool { return rowHasAlpha(img, bounds.Min.Y+i, 0) })
+	colBands := occupiedBands(bounds.Dx(), func(i int) bool { return columnHasAlpha(img, bounds.Min.X+i, 0) }, minGap)
+	rowBands := occupiedBands(bounds.Dy(), func(i int) bool { return rowHasAlpha(img, bounds.Min.Y+i, 0) }, minGap)
 
 	if len(colBands) == 0 || len(rowBands) == 0 {
 		return Grid{}
@@ -57,19 +65,31 @@ type band struct {
 	End   int
 }
 
-func occupiedBands(length int, occupied func(i int) bool) []band {
+func occupiedBands(length int, occupied func(i int) bool, minGap int) []band {
+	if minGap < 1 {
+		minGap = 1
+	}
+
 	var bands []band
 	start := -1
+	gapStart := -1
 	for i := 0; i < length; i++ {
 		if occupied(i) {
 			if start == -1 {
 				start = i
 			}
+			gapStart = -1
 			continue
 		}
 		if start != -1 {
-			bands = append(bands, band{Start: start, End: i})
-			start = -1
+			if gapStart == -1 {
+				gapStart = i
+			}
+			if i-gapStart+1 >= minGap {
+				bands = append(bands, band{Start: start, End: gapStart})
+				start = -1
+				gapStart = -1
+			}
 		}
 	}
 	if start != -1 {

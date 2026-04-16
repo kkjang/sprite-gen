@@ -144,10 +144,10 @@ func TestRunSpec(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
-	if len(got) != 8 {
-		t.Fatalf("spec command count = %d, want 8", len(got))
+	if len(got) != 11 {
+		t.Fatalf("spec command count = %d, want 11", len(got))
 	}
-	want := []string{"inspect frame", "inspect sheet", "palette apply", "palette extract", "snap pixels", "snap scale", "spec", "version"}
+	want := []string{"inspect frame", "inspect sheet", "palette apply", "palette extract", "prep alpha", "slice auto", "slice grid", "snap pixels", "snap scale", "spec", "version"}
 	for i := range want {
 		if got[i].Name != want[i] {
 			names := make([]string, len(got))

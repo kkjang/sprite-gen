@@ -32,3 +32,11 @@ func TestDefaultPaletteExtractOutPath(t *testing.T) {
 		t.Fatalf("defaultPaletteExtractOutPath() = %q, want %q", got, want)
 	}
 }
+
+func TestDefaultPrepAlphaOutPath(t *testing.T) {
+	inPath := filepath.Join("out", "slime3", "snap", "native.png")
+	want := filepath.Join("out", "slime3", "prep", "clean.png")
+	if got := defaultPrepAlphaOutPath(inPath); got != want {
+		t.Fatalf("defaultPrepAlphaOutPath() = %q, want %q", got, want)
+	}
+}
