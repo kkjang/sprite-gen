@@ -44,6 +44,10 @@ A living backlog of features we've thought about but explicitly deferred. Not a 
 - Skeletal / bone animation (currently out of scope).
 - 3D model generation (currently out of scope — different tool).
 - Live preview GUI (currently out of scope — GIF preview only in v1).
+- Semantic / model-based subject cutout that does not depend on keyed colors or border-connected backgrounds.
+- Background despill / matte decontamination to clean color fringes after keyed removal.
+- Automatic checkerboard and textured-background detection for fake-transparency artifacts.
+- Folding background-removal techniques directly into `segment subjects` as optional preprocessing once the standalone `prep background` command proves out.
 
 ## Testing
 

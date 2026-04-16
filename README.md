@@ -66,6 +66,17 @@ attempting to slice it:
 sprite-gen prep alpha ./sheet.png --alpha-threshold 128
 ```
 
+Remove a fake or opaque background without leaving the CLI:
+
+```bash
+sprite-gen prep background ./sheet.png --method auto
+```
+
+Use `prep background` for flat keyed or edge-connected opaque backgrounds.
+`--method auto` chooses `key` when `--color` is provided and `edge` otherwise.
+Use `prep alpha` when the PNG already has real transparency and just needs its
+low-alpha haze cleaned up.
+
 Detect and undo integer nearest-neighbor upscaling:
 
 ```bash
@@ -95,6 +106,24 @@ sprite-gen segment subjects ./messy_canvas.png --cell 32x32 --expected 4 --ancho
 mask, labels connected components, filters out small speckles, and writes the
 same `frame_NNN.png` plus `manifest.json` contract as `slice`.
 
+Align a sliced or segmented frame-set onto a shared pivot before export:
+
+```bash
+sprite-gen align frames ./out/knight/slice --anchor feet
+```
+
+`align frames` writes every output frame onto a shared canvas and updates
+`manifest.json` so each frame has the same output-space `pivot`.
+
+Compare two frame PNGs and write a red-overlay diff image:
+
+```bash
+sprite-gen diff frames ./frame_000.png ./frame_001.png --json
+```
+
+`diff frames` pads mismatched image sizes with transparency for comparison and
+reports the mismatch in structured output.
+
 `slice grid --trim` writes trimmed PNGs and records the trimmed source rect in
 `manifest.json`, so downstream commands still know where each frame came from in
 the original sheet.
@@ -102,8 +131,9 @@ the original sheet.
 For generated sprite sheets, ask for a fully transparent background, explicit
 frame count and layout, fixed cell size, and transparent gutters between cells.
 Avoid glow, floor shadows, blur, text, and borders. Even with a good prompt,
-`prep alpha` helps clean residual background haze before `slice`, while a truly
-messy canvas still belongs to `segment subjects`.
+`prep alpha` helps clean residual background haze before `slice`. If the model
+painted a fake or opaque background instead, run `prep background` first; a
+truly messy canvas still belongs to `segment subjects`.
 
 List the registered command surface:
 

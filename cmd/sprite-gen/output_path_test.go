@@ -40,3 +40,28 @@ func TestDefaultPrepAlphaOutPath(t *testing.T) {
 		t.Fatalf("defaultPrepAlphaOutPath() = %q, want %q", got, want)
 	}
 }
+
+func TestDefaultPrepBackgroundOutPath(t *testing.T) {
+	inPath := filepath.Join("out", "slime3", "snap", "native.png")
+	want := filepath.Join("out", "slime3", "prep", "background.png")
+	if got := defaultPrepBackgroundOutPath(inPath); got != want {
+		t.Fatalf("defaultPrepBackgroundOutPath() = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultAlignOutDir(t *testing.T) {
+	inPath := filepath.Join("out", "slime3", "slice")
+	want := filepath.Join("out", "slime3", "align")
+	if got := defaultAlignOutDir(inPath); got != want {
+		t.Fatalf("defaultAlignOutDir() = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultDiffOutPath(t *testing.T) {
+	aPath := filepath.Join("out", "slime3", "align", "frame_000.png")
+	bPath := filepath.Join("out", "slime3", "align", "frame_001.png")
+	want := filepath.Join("out", "slime3_vs_slime3", "diff", "diff.png")
+	if got := defaultDiffOutPath(aPath, bPath); got != want {
+		t.Fatalf("defaultDiffOutPath() = %q, want %q", got, want)
+	}
+}
