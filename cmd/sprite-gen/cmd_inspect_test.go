@@ -168,6 +168,9 @@ func TestRunInspectNonPNG(t *testing.T) {
 
 func writeCommandPNG(t *testing.T, path string, img image.Image) {
 	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("os.MkdirAll(%q) error = %v", filepath.Dir(path), err)
+	}
 	f, err := os.Create(path)
 	if err != nil {
 		t.Fatalf("os.Create(%q) error = %v", path, err)

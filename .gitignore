@@ -29,6 +29,9 @@ go.work.sum
 
 # Local scratch files
 .cache/
+.tmp/
+.DS_Store
+out/
 
 # Editor/IDE
 # .idea/

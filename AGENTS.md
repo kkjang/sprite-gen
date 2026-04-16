@@ -4,6 +4,7 @@
 
 - Keep command handlers thin; place reusable logic under `internal/`.
 - Every command supports `--json` for the `{ok, data, error}` envelope.
+- Every file-writing command supports `--dry-run` and uses deterministic subject-first output paths under `out/<subject>/<stage>/...`.
 - `spec` is the command registry source of truth; each command self-registers from `init()`.
 - Read-only commands like `inspect` should not write files or create default output paths.
 - Prefer actionable error messages over stack traces.

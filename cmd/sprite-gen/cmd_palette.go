@@ -29,7 +29,7 @@ func init() {
 		Name:        "palette extract",
 		Description: "Extract a palette from a PNG",
 		Args:        []specreg.Arg{{Name: "path", Required: true, Description: "PNG image to sample"}},
-		Flags:       []specreg.Flag{{Name: "max", Default: "16", Description: "Maximum colors to emit"}, {Name: "format", Default: "hex", Description: "Palette format: hex or gpl"}, {Name: "out", Description: "Output palette path; defaults to stdout"}, {Name: "dry-run", Default: "false", Description: "Report the output path without writing"}},
+		Flags:       []specreg.Flag{{Name: "max", Default: "16", Description: "Maximum colors to emit"}, {Name: "format", Default: "hex", Description: "Palette format: hex or gpl"}, {Name: "out", Description: "Output palette path; use - for stdout"}, {Name: "dry-run", Default: "false", Description: "Report the output path without writing"}},
 	})
 }
 
@@ -52,7 +52,7 @@ func runPaletteExtract(args []string, stdout io.Writer, asJSON bool) error {
 	fs.SetOutput(io.Discard)
 	maxColors := fs.Int("max", 16, "maximum colors to emit")
 	format := fs.String("format", "hex", "palette format: hex or gpl")
-	outPath := fs.String("out", "", "output palette path; defaults to stdout")
+	outPath := fs.String("out", "", "output palette path; use - for stdout")
 	dryRun := fs.Bool("dry-run", false, "report output path without writing")
 	path, parseArgs := splitSinglePathArg(args)
 	if err := fs.Parse(parseArgs); err != nil {
@@ -73,8 +73,9 @@ func runPaletteExtract(args []string, stdout io.Writer, asJSON bool) error {
 	if *maxColors <= 0 {
 		return fmt.Errorf("--max must be greater than 0")
 	}
-	if *dryRun && *outPath == "" {
-		return fmt.Errorf("--dry-run requires --out for palette extract")
+	formatName := strings.ToLower(*format)
+	if *outPath == "" {
+		*outPath = defaultPaletteExtractOutPath(path, formatName, *maxColors)
 	}
 
 	img, err := pixel.LoadPNG(path)
@@ -87,24 +88,27 @@ func runPaletteExtract(args []string, stdout io.Writer, asJSON bool) error {
 	}
 
 	var buf bytes.Buffer
-	if err := writePalette(&buf, strings.ToLower(*format), filepath.Base(path), pal); err != nil {
+	if err := writePalette(&buf, formatName, filepath.Base(path), pal); err != nil {
 		return err
 	}
 
-	resp := map[string]any{"colors": hexStrings(pal), "count": len(pal), "format": strings.ToLower(*format), "out": "-", "dry_run": *dryRun}
-	if *outPath == "" {
+	resp := map[string]any{"colors": hexStrings(pal), "count": len(pal), "format": formatName, "out": *outPath, "dry_run": *dryRun}
+	if *outPath == "-" {
+		if *dryRun {
+			text := fmt.Sprintf("would write: -\ncount: %d\nformat: %s\n", len(pal), formatName)
+			return jsonout.Write(stdout, asJSON, text, resp)
+		}
 		return jsonout.Write(stdout, asJSON, buf.String(), resp)
 	}
 
-	resp["out"] = *outPath
 	if *dryRun {
-		text := fmt.Sprintf("would write: %s\ncount: %d\nformat: %s\n", *outPath, len(pal), strings.ToLower(*format))
+		text := fmt.Sprintf("would write: %s\ncount: %d\nformat: %s\n", *outPath, len(pal), formatName)
 		return jsonout.Write(stdout, asJSON, text, resp)
 	}
 	if err := writeFile(*outPath, buf.Bytes()); err != nil {
 		return err
 	}
-	text := fmt.Sprintf("wrote: %s\ncount: %d\nformat: %s\n", *outPath, len(pal), strings.ToLower(*format))
+	text := fmt.Sprintf("wrote: %s\ncount: %d\nformat: %s\n", *outPath, len(pal), formatName)
 	return jsonout.Write(stdout, asJSON, text, resp)
 }
 
@@ -204,8 +208,7 @@ func writeFile(path string, contents []byte) error {
 }
 
 func defaultApplyOutPath(inPath string) string {
-	stem := strings.TrimSuffix(filepath.Base(inPath), filepath.Ext(inPath))
-	return filepath.Join("out", "palette", stem, "applied.png")
+	return defaultStageOutPath(inPath, "palette", "applied.png")
 }
 
 func hexStrings(pal []color.NRGBA) []string {

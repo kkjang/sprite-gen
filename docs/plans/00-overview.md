@@ -70,11 +70,11 @@ sprite-gen generate image "knight walk cycle, 4 frames, 32x32, pixel art" \
 
 # Clean up (plans 05, 06)
 sprite-gen snap scale   knight.png --factor auto
-sprite-gen palette extract knight.png --max 16 > palette.hex
-sprite-gen snap pixels  knight.png --palette palette.hex
+sprite-gen palette extract out/knight/snap/native.png --max 16
+sprite-gen snap pixels  out/knight/snap/native.png --palette out/knight/palette/extracted-16.hex
 
 # Slice into frames (plan 07)
-sprite-gen slice grid   knight_snapped.png --cols 4 --rows 1 --out frames/
+sprite-gen slice grid   out/knight/snap/snapped.png --cols 4 --rows 1 --out frames/
 
 # Fix drift, verify (plans 09, 10)
 sprite-gen align frames frames/ --anchor feet
@@ -172,7 +172,7 @@ Every `cmd_*.go` file stays under ~150 lines — they are thin flag parsers that
 - Error messages are imperative and actionable, never stack traces
 - `--json` flag on every command emits `{"ok": bool, "data": {...}, "error": "string"}`
 - `--dry-run` on every file-writing command
-- Default output paths are deterministic: `./out/<subject>/<stem>/...`
+- Default output paths are deterministic: `./out/<subject>/<stage>/...`
 - Golden test files under `testdata/golden/` regenerable with `go test -update`
 - No dependencies on [`godot-bridge`](https://github.com/kkjang/godot-bridge) at build time or runtime
 - Every plan-implementation PR must fold the plan's durable decisions into `AGENTS.md` (contributor conventions) and/or `README.md` (user surface) before merging. The `docs/plans/*.md` files are scaffolding and will be removed once all plans are complete; anything worth keeping must migrate out of them.

@@ -27,7 +27,7 @@ A living backlog of features we've thought about but explicitly deferred. Not a 
 
 - Prompt templates / prompt library under `~/.config/sprite-gen/prompts/`.
 - Cost & token usage reporting on every call; `--budget $X` guardrail.
-- Response caching (by prompt+model+size+seed hash) under `./out/.cache/`.
+- Response caching (by prompt+model+size+seed hash) under a subject-scoped output path such as `./out/<subject>/generate/cache/`.
 - Batch mode: one invocation, many prompts from a file.
 - Seed control and deterministic replay.
 

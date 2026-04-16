@@ -2,7 +2,7 @@
 
 ## Goal
 
-Complete the "clean up a single PNG" story with two snap operations: remove anti-aliasing by palette-snapping fractional-alpha pixels, and reverse accidental upscaling by downsampling to native resolution. Together with plan 05 (palette), this gives an agent the full single-image cleanup chain.
+Complete the "clean up a single PNG" story with two snap operations: remove anti-aliasing by zeroing low-alpha pixels before palette-snapping the remaining visible pixels, and reverse accidental upscaling by downsampling to native resolution. Together with plan 05 (palette), this gives an agent the full single-image cleanup chain.
 
 ## Scope
 
@@ -93,7 +93,7 @@ straddle block boundaries after a non-pixel-aligned crop.
 Removes AA from a sprite by:
 1. Loading the image.
 2. Running `pixel.ThresholdAlpha(img, 0, alphaThreshold)` to zero out
-   fractional-alpha pixels (they're AA; we make them transparent).
+   pixels with alpha below the cutoff.
 3. Running `palette.Apply(img, pal, false)` to snap remaining opaque
    pixels to the nearest palette color.
 4. Saving the result.
@@ -101,14 +101,14 @@ Removes AA from a sprite by:
 Flags:
 - `--palette FILE` (required): .hex or .gpl file to snap to
 - `--alpha-threshold N` (default 128): pixels with alpha < N become transparent
-- `--out FILE` (default: `./out/snap/<stem>/snapped.png`)
+- `--out FILE` (default: `./out/<subject>/snap/snapped.png`)
 - `--dry-run`
 - global `--json`
 
 Text output:
 
 ```
-  wrote: out/snap/aa_knight/snapped.png
+wrote: out/aa_knight/snap/snapped.png
 fractional_pixels_zeroed: 342
 changed_pixels: 187
 palette_size: 16
@@ -120,7 +120,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/snap/aa_knight/snapped.png",
+    "out": "out/aa_knight/snap/snapped.png",
     "fractional_pixels_zeroed": 342,
     "changed_pixels": 187,
     "palette_size": 16,
@@ -134,7 +134,7 @@ JSON output:
 
 Flags:
 - `--factor auto|N` (default `auto`): force a specific factor or detect
-- `--out FILE` (default: `./out/snap/<stem>/native.png`)
+- `--out FILE` (default: `./out/<subject>/snap/native.png`)
 - `--dry-run`
 - global `--json`
 
@@ -148,7 +148,7 @@ Behavior:
 Text output:
 
 ```
-  wrote: out/snap/upscaled_4x/native.png
+wrote: out/upscaled_4x/snap/native.png
 detected_factor: 4
 in:  128x128
 out: 32x32
@@ -160,7 +160,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/snap/upscaled_4x/native.png",
+    "out": "out/upscaled_4x/snap/native.png",
     "detected_factor": 4,
     "forced_factor": null,
     "in_w": 128, "in_h": 128,
@@ -199,9 +199,9 @@ Command-level tests:
 1. `go test ./...` passes including golden comparisons.
 2. Running the typical cleanup chain on test fixtures:
    ```bash
-   sprite-gen snap scale testdata/input/snap/upscaled_4x.png --factor auto
-   sprite-gen palette extract out/snap/upscaled_4x_native.png --max 16 > /tmp/p.hex
-   sprite-gen snap pixels out/snap/upscaled_4x_native.png --palette /tmp/p.hex
+    sprite-gen snap scale testdata/input/snap/upscaled_4x.png --factor auto
+    sprite-gen palette extract out/upscaled_4x/snap/native.png --max 16
+    sprite-gen snap pixels out/upscaled_4x/snap/native.png --palette out/upscaled_4x/palette/extracted-16.hex
    ```
    exits 0 at each step and produces images that differ from the inputs.
 3. `sprite-gen snap scale` on an already-native image (factor=1) exits 0 with a note.

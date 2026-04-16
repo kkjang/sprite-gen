@@ -139,7 +139,7 @@ Command grammar: `generate` + noun, matching existing `inspect sheet`/`snap pixe
 | `--model` | `gpt-image-1` | Must be in provider's `Models()` list |
 | `--size` | `1024x1024` | Validated against provider's accepted sizes |
 | `--n` | `1` | Integer ≥ 1 |
-| `--out` | `./out/generate/<stem>/image-<idx>.png` | `<stem>` = first 12 hex chars of sha256(prompt); `<idx>` zero-padded |
+| `--out` | `./out/<subject>/generate/image-<idx>.png` | `<subject>` = first 12 hex chars of sha256(prompt); `<idx>` zero-padded |
 | `--prompt-file` | — | Read prompt from file path, or `-` for stdin (mutually exclusive with positional prompt) |
 | `--dry-run` | `false` | Validate + print request; no API call |
 
@@ -155,7 +155,7 @@ Command grammar: `generate` + noun, matching existing `inspect sheet`/`snap pixe
     "size": "1024x1024",
     "prompt": "red knight, pixel art, 32x32",
     "images": [
-      {"path": "out/generate/a1b2c3d4e5f6/image-0.png", "revised_prompt": "..."}
+      {"path": "out/a1b2c3d4e5f6/generate/image-0.png", "revised_prompt": "..."}
     ]
   }
 }
