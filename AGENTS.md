@@ -15,6 +15,9 @@
 - `prep background` is the explicit cleanup step for fake or opaque generated backgrounds; it is distinct from `prep alpha` because keyed/edge-connected background removal and alpha-threshold cleanup solve different problems.
 - `segment subjects` is the alternate one-image-to-frame-set path for messy generated canvases; it writes the same `frames + manifest` contract as `slice`, and `manifest.frames[].rect` records source-space component bounds from the original canvas.
 - `align frames` writes every output frame onto a shared canvas and sets a common output-space `manifest.frames[].pivot` across the aligned set.
+- `export` is the single format-registry entry point for frame-set outputs; new formats self-register from `init()` without changing command dispatch.
+- `export --format sheet-png` writes a single PNG artifact at `--out`; it does not write a companion manifest and may pad mixed-size inputs into max-size cells.
+- Prefer the short pipeline (`prep background? -> segment/slice -> align -> export`) when the problem is mostly layout/background cleanup; prefer the full pipeline (`... -> snap scale -> palette extract -> snap pixels -> ...`) when the image also has palette noise, shimmer, or soft-edge artifacts. Visually validate full-pipeline results on opaque-background inputs because extracted palettes can preserve fringe colors left by incomplete cleanup.
 
 ## Release Conventions
 

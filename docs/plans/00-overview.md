@@ -55,7 +55,7 @@ Status legend: ✅ Done · 🚧 In progress · 📋 Planned
 | 08 | ✅ Done | Segment subjects | Alternate path to `frames + manifest` from a *messy* AI-generated canvas: threshold alpha, connected-component label each subject, normalize into fixed-size cells with baseline alignment. Composes with align/diff/export unchanged. | `08-segment.md` |
 | 08.5 | ✅ Done | Background cleanup | Adds `prep background` for fake transparency and opaque generated backgrounds using extensible cleanup methods (`key`, `edge`). | `08.5-background-cleanup.md` |
 | 09 | ✅ Done | Align + Diff | Frame-level ops that depend on slice or segment having run. Align fixes drift; diff verifies results. | `09-align-diff.md` |
-| 10 | 📋 Planned | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `10-export-pipeline.md` |
+| 10 | ✅ Done | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `10-export-pipeline.md` |
 | 11 | 📋 Planned | Godot export formats | First engine-specific formats: `godot-spriteframes` and `godot-atlas`. Validates that the registry extends cleanly. | `11-godot-export.md` |
 
 ## Pipeline this builds toward
