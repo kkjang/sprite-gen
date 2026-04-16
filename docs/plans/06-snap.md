@@ -1,8 +1,8 @@
-# Plan 05 — Pixel Snap
+# Plan 06 — Pixel Snap
 
 ## Goal
 
-Complete the "clean up a single PNG" story with two snap operations: remove anti-aliasing by palette-snapping fractional-alpha pixels, and reverse accidental upscaling by downsampling to native resolution. Together with plan 04 (palette), this gives an agent the full single-image cleanup chain.
+Complete the "clean up a single PNG" story with two snap operations: remove anti-aliasing by palette-snapping fractional-alpha pixels, and reverse accidental upscaling by downsampling to native resolution. Together with plan 05 (palette), this gives an agent the full single-image cleanup chain.
 
 ## Scope
 
@@ -101,14 +101,14 @@ Removes AA from a sprite by:
 Flags:
 - `--palette FILE` (required): .hex or .gpl file to snap to
 - `--alpha-threshold N` (default 128): pixels with alpha < N become transparent
-- `--out FILE` (default: `./out/snap/<stem>_snapped.png`)
+- `--out FILE` (default: `./out/snap/<stem>/snapped.png`)
 - `--dry-run`
 - global `--json`
 
 Text output:
 
 ```
-wrote: out/snap/aa_knight_snapped.png
+  wrote: out/snap/aa_knight/snapped.png
 fractional_pixels_zeroed: 342
 changed_pixels: 187
 palette_size: 16
@@ -120,7 +120,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/snap/aa_knight_snapped.png",
+    "out": "out/snap/aa_knight/snapped.png",
     "fractional_pixels_zeroed": 342,
     "changed_pixels": 187,
     "palette_size": 16,
@@ -134,7 +134,7 @@ JSON output:
 
 Flags:
 - `--factor auto|N` (default `auto`): force a specific factor or detect
-- `--out FILE` (default: `./out/snap/<stem>_native.png`)
+- `--out FILE` (default: `./out/snap/<stem>/native.png`)
 - `--dry-run`
 - global `--json`
 
@@ -148,7 +148,7 @@ Behavior:
 Text output:
 
 ```
-wrote: out/snap/upscaled_4x_native.png
+  wrote: out/snap/upscaled_4x/native.png
 detected_factor: 4
 in:  128x128
 out: 32x32
@@ -160,7 +160,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/snap/upscaled_4x_native.png",
+    "out": "out/snap/upscaled_4x/native.png",
     "detected_factor": 4,
     "forced_factor": null,
     "in_w": 128, "in_h": 128,
@@ -191,7 +191,7 @@ Command-level tests:
 - `snap scale testdata/input/snap/upscaled_4x.png --json` → envelope with `detected_factor: 4`, `out_w: 32`.
 - `snap scale testdata/input/snap/upscaled_4x.png --factor 4 --json` → same result, `forced_factor: 4`.
 - `snap pixels testdata/input/snap/aa_knight.png --palette golden/palette/knight_16.hex --json` → envelope with `ok: true`.
-- `snap pixels` without `--palette` → exit code 2, stderr mentions `--palette`.
+- `snap pixels` without `--palette` → non-zero exit code, stderr mentions `--palette`.
 - `snap scale` on a non-PNG → exit code non-zero, actionable error.
 
 ## Acceptance criteria
@@ -206,7 +206,7 @@ Command-level tests:
    exits 0 at each step and produces images that differ from the inputs.
 3. `sprite-gen snap scale` on an already-native image (factor=1) exits 0 with a note.
 4. `sprite-gen spec` shows eight commands.
-5. No new non-stdlib dependencies (go-quantize was added in plan 04; `scale.go` uses only stdlib `image`).
+5. No new non-stdlib dependencies (`scale.go` uses only stdlib `image`).
 
 ## Suggested commit message
 
