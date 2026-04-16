@@ -18,7 +18,7 @@ Commands are grouped by **what they read** and **what they produce**:
 | Nothing | Metadata | `version`, `spec` |
 | Prompt | One image | `generate image` |
 | One image | Report (no files) | `inspect sheet`, `inspect frame` |
-| One image | One image | `snap pixels`, `snap scale`, `prep alpha`, `prep background`, `palette apply` |
+| One image | One image | `snap pixels`, `snap scale`, `normalize detail`, `prep alpha`, `prep background`, `palette apply` |
 | One image | Palette file | `palette extract` |
 | One image | Many images + manifest | `slice grid`, `slice auto`, `segment subjects` |
 | Many images | Many images + manifest | `align frames` |
@@ -57,10 +57,11 @@ Status legend: ✅ Done · 🚧 In progress · 📋 Planned
 | 09 | ✅ Done | Align + Diff | Frame-level ops that depend on slice or segment having run. Align fixes drift; diff verifies results. | `09-align-diff.md` |
 | 10 | ✅ Done | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `10-export-pipeline.md` |
 | 11 | 📋 Planned | Godot export formats | First engine-specific formats: `godot-spriteframes` and `godot-atlas`. Validates that the registry extends cleanly. | `11-godot-export.md` |
+| 12 | 📋 Planned | Normalize detail | Adds an intentional project-consistency step for single-image inputs: scale sprites toward a target visible height or explicit integer factor without overloading `snap scale`. Reuses mature single-image primitives and composes with both the short and full pipelines. | `12-normalize-detail.md` |
 
 ## Pipeline this builds toward
 
-After all twelve plans are merged, an agent can run the full pipeline end-to-end without leaving the CLI. There are two canonical entry paths into the frame-set world, picked by input shape:
+After all thirteen plans are merged, an agent can run the full pipeline end-to-end without leaving the CLI. There are two canonical entry paths into the frame-set world, picked by input shape:
 
 ### Happy path — clean sheet input
 
@@ -76,8 +77,11 @@ sprite-gen snap pixels  out/knight/snap/native.png --palette out/knight/palette/
 sprite-gen prep background out/knight/snap/snapped.png --method auto
 sprite-gen prep alpha   out/knight/prep/background.png --alpha-threshold 128
 
+# Optional style normalization (plan 12)
+sprite-gen normalize detail out/knight/prep/clean.png --target-height 48
+
 # Slice into frames (plan 07)
-sprite-gen slice grid   out/knight/prep/clean.png --cols 4 --rows 1 --out frames/
+sprite-gen slice grid   out/knight/normalize/detail.png --cols 4 --rows 1 --out frames/
 
 # Fix drift, verify (plans 09, 10)
 sprite-gen align frames frames/ --anchor feet
@@ -99,8 +103,11 @@ sprite-gen inspect sheet knight.png --json
 # Remove an opaque fake background when needed
 sprite-gen prep background knight.png --method auto
 
+# Optional style normalization before segmentation
+sprite-gen normalize detail out/knight/prep/background.png --target-height 48
+
 # Segment the canvas directly into normalized frames (plan 08)
-sprite-gen segment subjects out/knight/prep/background.png --cell 32x32 --expected 4 --anchor feet \
+sprite-gen segment subjects out/knight/normalize/detail.png --cell 32x32 --expected 4 --anchor feet \
     --out frames/
 
 # Continue with the same align → export pipeline
