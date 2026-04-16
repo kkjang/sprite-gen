@@ -2,6 +2,44 @@
 
 Minimal Go CLI for cleaning up AI-generated pixel art and exporting it to game-engine-native formats.
 
+## Pipeline
+
+```mermaid
+flowchart TD
+    subgraph Inputs[Supported Inputs]
+        A[Sprite sheet PNG]
+        B[Messy canvas PNG]
+        C[Transparent PNG with alpha haze]
+        D[Opaque PNG with fake background]
+    end
+
+    C --> E[prep alpha]
+    D --> F[prep background]
+    A --> G[slice grid or slice auto]
+    B --> H[segment subjects]
+    E --> G
+    E --> H
+    F --> G
+    F --> H
+
+    G --> I[Frame-set output<br/>frame_*.png + manifest.json]
+    H --> I
+
+    I --> J[align frames]
+    I --> K[snap scale]
+    K --> L[palette extract]
+    L --> M[snap pixels]
+    M --> H
+
+    J --> N[Aligned frame-set output<br/>frame_*.png + manifest.json]
+
+    I --> O[export]
+    N --> O
+
+    O --> P[Animated GIF output]
+    O --> Q[Sprite sheet PNG output]
+```
+
 ## Build
 
 ```bash
