@@ -1,35 +1,32 @@
-# Plan 04 — Palette Ops
+# Plan 05 — Palette Ops
 
 ## Goal
 
-Introduce the `internal/palette` package with two commands: extract a palette from an image and apply an existing palette to an image. These are standalone-useful and are prerequisites for plan 05 (`snap pixels`), which needs a target palette to snap to.
+Introduce the `internal/palette` package with two commands: extract a palette from an image and apply an existing palette to an image. These are standalone-useful and are prerequisites for plan 06 (`snap pixels`), which needs a target palette to snap to.
 
 ## Scope
 
 **In:**
-- `internal/palette` package: median-cut quantization, palette file I/O (hex + GPL), pixel-distance snapping
+- `internal/palette` package: deterministic palette extraction, palette file I/O (hex + GPL), pixel-distance snapping
 - `sprite-gen palette extract PATH` — output a palette file from an image's dominant colors
 - `sprite-gen palette apply PATH --palette FILE` — recolor an image to a given palette
-- First use of a non-stdlib dependency: `github.com/ericpauley/go-quantize`
-- `go.mod` updated with the dependency
+- Optional Floyd-Steinberg dithering when applying a palette
 - Tests with golden palette files
 
 **Out:**
-- Anti-aliasing removal (plan 05)
-- Integer rescaling (plan 05)
+- Anti-aliasing removal (plan 06)
+- Integer rescaling (plan 06)
 - Dithering modes beyond none and Floyd-Steinberg
 
 ## File plan
 
 ```
 sprite-gen/
-  go.mod                                # updated with go-quantize dep
-  go.sum
   cmd/sprite-gen/
     cmd_palette.go                      # flag parsing for extract + apply
   internal/
     palette/
-      quantize.go                       # wrap go-quantize; return []color.NRGBA
+      quantize.go                       # deterministic palette extraction; return []color.NRGBA
       snap.go                           # nearest-color snapping (no AA removal here)
       file.go                           # read/write .hex and .gpl palette files
       quantize_test.go
@@ -58,7 +55,7 @@ package palette
 import "image/color"
 
 // Extract returns up to maxColors dominant colors from img using
-// median-cut quantization.
+// a deterministic in-repo quantizer.
 func Extract(img image.Image, maxColors int) []color.NRGBA
 
 // Snap returns the color in pal closest to c by Euclidean distance
@@ -68,7 +65,7 @@ func Snap(c color.NRGBA, pal []color.NRGBA) color.NRGBA
 // Apply returns a new *image.NRGBA with every opaque pixel snapped to
 // the nearest color in pal. Transparent pixels (alpha == 0) are left
 // transparent. Partially-transparent pixels are snapped and their alpha
-// is preserved unchanged (AA removal is a separate concern in plan 05).
+// is preserved unchanged (AA removal is a separate concern in plan 06).
 func Apply(img image.Image, pal []color.NRGBA, dither bool) *image.NRGBA
 
 // --- File I/O ---
@@ -90,7 +87,7 @@ func WriteGPL(w io.Writer, name string, pal []color.NRGBA) error
 ```
 
 One exported `Snap` for a single pixel, one exported `Apply` that loops
-the whole image. This separation makes `snap pixels` (plan 05) easy: it
+the whole image. This separation makes `snap pixels` (plan 06) easy: it
 calls `Apply` but first removes fractional-alpha pixels via a separate
 alpha-threshold pass.
 
@@ -102,6 +99,7 @@ Flags:
 - `--max N` (default 16): maximum colors in the output palette
 - `--format hex|gpl` (default `hex`): output format
 - `--out FILE` (default: stdout for hex/gpl text)
+- `--dry-run`: validate and report what would be written when `--out` is set
 - global `--json`
 
 Behavior:
@@ -134,13 +132,15 @@ JSON output:
 
 When `--out FILE` is given, `data.out` is the file path and nothing is
 written to stdout. This allows piping: `sprite-gen palette extract img.png > palette.hex`.
+If `--dry-run` is set, no file is written and the response reports the
+target path.
 
 ### `sprite-gen palette apply PATH`
 
 Flags:
 - `--palette FILE` (required): .hex or .gpl palette file
 - `--dither` (default false): enable Floyd-Steinberg dithering
-- `--out FILE` (default: `./out/palette/<stem>_applied.png`)
+- `--out FILE` (default: `./out/palette/<stem>/applied.png`)
 - `--dry-run`: print what would be written, don't write
 - global `--json`
 
@@ -153,7 +153,7 @@ Behavior:
 Text output:
 
 ```
-wrote: out/palette/knight_applied.png
+  wrote: out/palette/knight/applied.png
 colors in: 847
 colors out: 16
 ```
@@ -164,7 +164,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/palette/knight_applied.png",
+    "out": "out/palette/knight/applied.png",
     "colors_in": 847,
     "colors_out": 16,
     "dither": false,
@@ -175,32 +175,29 @@ JSON output:
 
 ## Deterministic output paths
 
-Default output path pattern: `./out/palette/<stem>_<op>.png` where:
-- `<stem>` is the input filename without extension
-- `<op>` is `applied`
+Default output path pattern: `./out/palette/<stem>/applied.png` where
+`<stem>` is the input filename without extension.
 
-Example: `knight_16color.png` → `out/palette/knight_16color_applied.png`.
+Example: `knight_16color.png` → `out/palette/knight_16color/applied.png`.
 
 This is the same `./out/<subject>/<stem>/...` convention from the overview.
 
-## Dependency: `github.com/ericpauley/go-quantize`
+## Quantization approach
 
-This is the only non-stdlib dependency in v1 of sprite-gen. Add it to `go.mod`:
-
-```
-require github.com/ericpauley/go-quantize v0.0.1
-```
-
-Wrap it in `internal/palette/quantize.go` so the rest of the codebase
-never imports it directly. If we swap quantizers later, only one file changes.
+Use a small deterministic in-repo quantizer implemented in
+`internal/palette/quantize.go`. `image/draw` provides the `draw.Quantizer`
+interface and Floyd-Steinberg dithering, but it does not provide a
+built-in palette extraction implementation we can instantiate directly.
+Keep extraction internal so we can swap algorithms later without touching
+the command surface.
 
 ## Testing
 
 `internal/palette/quantize_test.go`:
 - `Extract` on a 4-color image returns exactly 4 colors (or fewer if `max < 4`).
 - `Extract` with `max=16` on a gradient image returns ≤ 16 colors.
-- Colors returned are stable (same input → same output). `go-quantize`'s
-  median-cut is deterministic; verify this property explicitly.
+- Colors returned are stable (same input → same output); verify this
+  property explicitly.
 
 `internal/palette/snap_test.go`:
 - `Snap(red, [red, blue, green])` returns red.
@@ -217,7 +214,7 @@ never imports it directly. If we swap quantizers later, only one file changes.
 Command-level tests:
 - `palette extract testdata/input/palette/simple_4color.png --max 4 --json` → envelope with 4 colors.
 - `palette apply testdata/input/palette/knight_16color.png --palette testdata/golden/palette/knight_16.hex --json` → envelope with `ok: true`, `out` path populated.
-- `palette apply` without `--palette` → exit code 2, stderr mentions `--palette`.
+- `palette apply` without `--palette` → non-zero exit code, stderr mentions `--palette`.
 
 ## Acceptance criteria
 
@@ -226,25 +223,25 @@ Command-level tests:
 3. `sprite-gen palette apply testdata/input/palette/knight_16color.png --palette palette.hex --dry-run` prints what it would write and exits 0.
 4. The applied image passes a round-trip: `sprite-gen palette apply img.png --palette p.hex && sprite-gen palette extract applied.png --max 16` produces a subset of the original palette.
 5. `sprite-gen spec` shows six commands.
-6. `go-quantize` is the only new import; no other third-party packages added.
+6. No new third-party packages are added.
 
 ## Suggested commit message
 
 ```
 feat(palette): extract and apply palette operations
 
-Add internal/palette with median-cut quantization (go-quantize),
+Add internal/palette with deterministic palette extraction,
 nearest-color snap, and hex/GPL file I/O. Two new verbs:
-`palette extract` and `palette apply`. First non-stdlib dep.
+`palette extract` and `palette apply`.
 ```
 
 ## Notes for the next plan
 
-- Plan 05 (`snap pixels`) will call `palette.Apply` but adds a
+- Plan 06 (`snap pixels`) will call `palette.Apply` but adds a
   pre-pass that thresholds fractional-alpha pixels to 0 or 255 before
   snapping. That pre-pass belongs in `internal/pixel` (alpha ops),
   not in `internal/palette`.
-- `snap scale` (also plan 05) uses only `internal/pixel` and does not
+- `snap scale` (also plan 06) uses only `internal/pixel` and does not
   need `internal/palette` at all — keep them separate.
 - Do not add dithering modes beyond Floyd-Steinberg in this plan. The
   `--dither` flag is boolean for now; if named modes are needed later,

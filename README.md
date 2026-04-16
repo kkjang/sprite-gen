@@ -28,6 +28,18 @@ Inspect a single frame and report bbox and a simple feet pivot hint:
 sprite-gen inspect frame ./frame.png --json
 ```
 
+Extract a palette from a PNG to stdout:
+
+```bash
+sprite-gen palette extract ./sheet.png --max 16
+```
+
+Apply a palette and write to the deterministic default output path:
+
+```bash
+sprite-gen palette apply ./sheet.png --palette ./palette.hex
+```
+
 List the registered command surface:
 
 ```bash
