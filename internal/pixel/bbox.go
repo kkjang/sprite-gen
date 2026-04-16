@@ -2,6 +2,8 @@ package pixel
 
 import "image"
 
+const DefaultBBoxAlphaThreshold uint8 = 8
+
 // BBox returns the tight rectangle containing all pixels with alpha > alphaMin.
 func BBox(img image.Image, alphaMin uint8) image.Rectangle {
 	bounds := img.Bounds()

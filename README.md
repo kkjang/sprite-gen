@@ -28,6 +28,13 @@ Inspect a single frame and report bbox and a simple feet pivot hint:
 sprite-gen inspect frame ./frame.png --json
 ```
 
+`inspect frame` ignores ultra-low-alpha stray pixels by default when
+computing the bbox and pivot. Tune it for softer assets with:
+
+```bash
+sprite-gen inspect frame ./frame.png --alpha-threshold 1 --json
+```
+
 Extract a palette from a PNG to stdout:
 
 ```bash
