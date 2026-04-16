@@ -98,22 +98,22 @@ alpha-threshold pass.
 Flags:
 - `--max N` (default 16): maximum colors in the output palette
 - `--format hex|gpl` (default `hex`): output format
-- `--out FILE` (default: stdout for hex/gpl text)
-- `--dry-run`: validate and report what would be written when `--out` is set
+- `--out FILE` (default: `./out/<subject>/palette/extracted-<max>.<format>`)
+- `--dry-run`: validate and report what would be written
 - global `--json`
 
 Behavior:
 - Load image with `pixel.LoadPNG`
 - Call `palette.Extract(img, max)`
-- Write to `--out` or stdout
+- Write to the deterministic default output path
+- When `--out -` is given, write the palette to stdout instead of a file
 
-Text output (to stdout, default):
+Text output:
 
 ```
-#1a1c2c
-#5d275d
-#b13e53
-...
+wrote: out/knight/palette/extracted-16.hex
+count: 16
+format: hex
 ```
 
 JSON output:
@@ -125,13 +125,14 @@ JSON output:
     "colors": ["#1a1c2c", "#5d275d", "#b13e53"],
     "count": 16,
     "format": "hex",
-    "out": "-"
+    "out": "out/knight/palette/extracted-16.hex"
   }
 }
 ```
 
 When `--out FILE` is given, `data.out` is the file path and nothing is
-written to stdout. This allows piping: `sprite-gen palette extract img.png > palette.hex`.
+written to stdout. Use `--out -` to preserve piping behavior:
+`sprite-gen palette extract img.png --out - > palette.hex`.
 If `--dry-run` is set, no file is written and the response reports the
 target path.
 
@@ -140,7 +141,7 @@ target path.
 Flags:
 - `--palette FILE` (required): .hex or .gpl palette file
 - `--dither` (default false): enable Floyd-Steinberg dithering
-- `--out FILE` (default: `./out/palette/<stem>/applied.png`)
+- `--out FILE` (default: `./out/<subject>/palette/applied.png`)
 - `--dry-run`: print what would be written, don't write
 - global `--json`
 
@@ -153,7 +154,7 @@ Behavior:
 Text output:
 
 ```
-  wrote: out/palette/knight/applied.png
+wrote: out/knight/palette/applied.png
 colors in: 847
 colors out: 16
 ```
@@ -164,7 +165,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/palette/knight/applied.png",
+    "out": "out/knight/palette/applied.png",
     "colors_in": 847,
     "colors_out": 16,
     "dither": false,
@@ -175,12 +176,18 @@ JSON output:
 
 ## Deterministic output paths
 
-Default output path pattern: `./out/palette/<stem>/applied.png` where
-`<stem>` is the input filename without extension.
+Default output path patterns:
 
-Example: `knight_16color.png` → `out/palette/knight_16color/applied.png`.
+- `palette extract` → `./out/<subject>/palette/extracted-<max>.<format>`
+- `palette apply` → `./out/<subject>/palette/applied.png`
 
-This is the same `./out/<subject>/<stem>/...` convention from the overview.
+`<subject>` is usually the input filename without extension. When the input
+already lives under `out/<subject>/<stage>/...`, later commands preserve that
+subject name rather than switching to the intermediate filename.
+
+Example: `out/knight/snap/native.png` → `out/knight/palette/applied.png`.
+
+This is the same `./out/<subject>/<stage>/...` convention from the overview.
 
 ## Quantization approach
 
@@ -219,7 +226,7 @@ Command-level tests:
 ## Acceptance criteria
 
 1. `go test ./...` passes.
-2. `sprite-gen palette extract testdata/input/palette/simple_4color.png --max 4` prints 4 hex lines.
+2. `sprite-gen palette extract testdata/input/palette/simple_4color.png --max 4` writes `out/simple_4color/palette/extracted-4.hex`.
 3. `sprite-gen palette apply testdata/input/palette/knight_16color.png --palette palette.hex --dry-run` prints what it would write and exits 0.
 4. The applied image passes a round-trip: `sprite-gen palette apply img.png --palette p.hex && sprite-gen palette extract applied.png --max 16` produces a subset of the original palette.
 5. `sprite-gen spec` shows six commands.
@@ -238,9 +245,9 @@ nearest-color snap, and hex/GPL file I/O. Two new verbs:
 ## Notes for the next plan
 
 - Plan 06 (`snap pixels`) will call `palette.Apply` but adds a
-  pre-pass that thresholds fractional-alpha pixels to 0 or 255 before
-  snapping. That pre-pass belongs in `internal/pixel` (alpha ops),
-  not in `internal/palette`.
+	pre-pass that thresholds low-alpha pixels to 0 before
+	snapping. That pre-pass belongs in `internal/pixel` (alpha ops),
+	not in `internal/palette`.
 - `snap scale` (also plan 06) uses only `internal/pixel` and does not
   need `internal/palette` at all — keep them separate.
 - Do not add dithering modes beyond Floyd-Steinberg in this plan. The

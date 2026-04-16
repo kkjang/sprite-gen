@@ -38,6 +38,30 @@ func TestRunPaletteExtractJSON(t *testing.T) {
 	if data["count"].(float64) != 4 {
 		t.Fatalf("data.count = %v, want 4", data["count"])
 	}
+	wantOut := filepath.Join("out", "simple", "palette", "extracted-4.hex")
+	if data["out"] != wantOut {
+		t.Fatalf("data.out = %v, want %q", data["out"], wantOut)
+	}
+	if _, err := os.Stat(wantOut); err != nil {
+		t.Fatalf("os.Stat(%q) error = %v", wantOut, err)
+	}
+}
+
+func TestRunPaletteExtractStdout(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "simple.png")
+	img := image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	img.SetNRGBA(0, 0, color.NRGBA{R: 255, A: 255})
+	writeCommandPNG(t, path, img)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	exitCode := run([]string{"palette", "extract", path, "--out", "-"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() exit code = %d, want 0; stderr=%q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "#ff0000") {
+		t.Fatalf("stdout = %q, want palette hex output", stdout.String())
+	}
 }
 
 func TestRunPaletteApplyJSON(t *testing.T) {
@@ -70,6 +94,32 @@ func TestRunPaletteApplyJSON(t *testing.T) {
 	}
 	if data["colors_out"].(float64) != 2 {
 		t.Fatalf("data.colors_out = %v, want 2", data["colors_out"])
+	}
+}
+
+func TestRunPaletteApplyDefaultOutPreservesSubject(t *testing.T) {
+	inputPath := filepath.Join("out", "slime3", "snap", "native.png")
+	palettePath := filepath.Join(t.TempDir(), "palette.hex")
+	img := image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	img.SetNRGBA(0, 0, color.NRGBA{R: 20, G: 200, B: 20, A: 255})
+	writeCommandPNG(t, inputPath, img)
+	writePaletteFile(t, palettePath, []color.NRGBA{{G: 255, A: 255}})
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	exitCode := run([]string{"palette", "apply", inputPath, "--palette", palettePath, "--json"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() exit code = %d, want 0; stderr=%q", exitCode, stderr.String())
+	}
+
+	var got jsonout.Envelope
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	data := got.Data.(map[string]any)
+	wantOut := filepath.Join("out", "slime3", "palette", "applied.png")
+	if data["out"] != wantOut {
+		t.Fatalf("data.out = %v, want %q", data["out"], wantOut)
 	}
 }
 

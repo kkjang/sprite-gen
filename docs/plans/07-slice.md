@@ -103,7 +103,7 @@ Flags:
 - `--cols N` (required)
 - `--rows N` (default 1)
 - `--trim` (default false): crop transparent border from each frame
-- `--out DIR` (default: `./out/slice/<stem>/`)
+- `--out DIR` (default: `./out/<subject>/slice/`)
 - `--dry-run`
 - global `--json`
 
@@ -117,7 +117,7 @@ Behavior:
 Text output:
 
 ```
-wrote: out/slice/walk_4x1/ (4 frames, 32x32 each)
+wrote: out/walk_4x1/slice/ (4 frames, 32x32 each)
 ```
 
 JSON output:
@@ -126,7 +126,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/slice/walk_4x1/",
+    "out": "out/walk_4x1/slice/",
     "frames": [
       {"index": 0, "path": "frame_000.png", "rect": {"x":0,"y":0,"w":32,"h":32}},
       {"index": 1, "path": "frame_001.png", "rect": {"x":32,"y":0,"w":32,"h":32}},
@@ -149,7 +149,7 @@ then uses `GuessGrid` logic from plan 03 on the resulting bands.
 
 Flags:
 - `--min-gap N` (default 1): minimum transparent-row run to count as a gutter
-- `--out DIR` (default: `./out/slice/<stem>/`)
+- `--out DIR` (default: `./out/<subject>/slice/`)
 - `--dry-run`
 - global `--json`
 
@@ -185,7 +185,7 @@ Command-level tests:
 ## Acceptance criteria
 
 1. `go test ./...` passes including golden frame comparisons.
-2. `sprite-gen slice grid walk_4x1.png --cols 4` creates 4 frame PNGs + `manifest.json` in `out/slice/walk_4x1/`.
+2. `sprite-gen slice grid walk_4x1.png --cols 4` creates 4 frame PNGs + `manifest.json` in `out/walk_4x1/slice/`.
 3. Re-running the same command overwrites without creating duplicates.
 4. The manifest JSON is valid and `manifest.Read` parses it cleanly.
 5. `sprite-gen slice auto gutter_strip.png` produces the same output as `slice grid` with the correct explicit grid.

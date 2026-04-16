@@ -205,8 +205,8 @@ used as items in an `ItemList`).
 - Golden snapshot for `frame_000.tres`.
 
 Command-level tests (via `cmd_export.go`, unchanged from plan 10):
-- `export out/slice/walk_4x1 --format godot-spriteframes --json` → envelope with `ok: true`, `out` ending in `.tres`.
-- `export out/slice/walk_4x1 --format godot-atlas --sheet res://walk_sheet.png --json` → envelope with `tres_paths` array of 4 paths.
+- `export out/walk_4x1/slice --format godot-spriteframes --json` → envelope with `ok: true`, `out` ending in `.tres`.
+- `export out/walk_4x1/slice --format godot-atlas --sheet res://walk_sheet.png --json` → envelope with `tres_paths` array of 4 paths.
 - `export --list-formats --json` now shows 4 formats: `gif`, `sheet-png`, `godot-spriteframes`, `godot-atlas`.
 
 ## Acceptance criteria
@@ -215,7 +215,7 @@ Command-level tests (via `cmd_export.go`, unchanged from plan 10):
 2. Running the full pipeline:
    ```bash
    sprite-gen slice grid testdata/input/slice/walk_4x1.png --cols 4
-   sprite-gen export out/slice/walk_4x1 --format godot-spriteframes \
+   sprite-gen export out/walk_4x1/slice --format godot-spriteframes \
      --anim walk --fps 8 --out walk.tres
    ```
    produces a `walk.tres` that:
@@ -247,18 +247,18 @@ functional:
 ```bash
 # Clean up
 sprite-gen snap scale   knight.png --factor auto
-sprite-gen palette extract out/snap/knight_native.png --max 16 > p.hex
-sprite-gen snap pixels  out/snap/knight_native.png --palette p.hex
+sprite-gen palette extract out/knight/snap/native.png --max 16
+sprite-gen snap pixels  out/knight/snap/native.png --palette out/knight/palette/extracted-16.hex
 
 # Slice
-sprite-gen slice grid   out/snap/knight_native_snapped.png --cols 4 --rows 1
+sprite-gen slice grid   out/knight/snap/snapped.png --cols 4 --rows 1
 
 # Fix drift and preview
-sprite-gen align frames out/slice/knight_native_snapped --anchor feet
-sprite-gen export       out/align/knight_native_snapped --format gif --fps 8 --scale 2
+sprite-gen align frames out/knight/slice --anchor feet
+sprite-gen export       out/knight/align --format gif --fps 8 --scale 2
 
 # Export to Godot
-sprite-gen export       out/align/knight_native_snapped \
+sprite-gen export       out/knight/align \
   --format godot-spriteframes --anim walk --fps 8 --out knight_walk.tres
 ```
 

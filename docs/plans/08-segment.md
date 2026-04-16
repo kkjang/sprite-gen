@@ -188,7 +188,7 @@ Reads one PNG, produces a frame directory and manifest. One-shot by default; eve
 | `--anchor feet\|center\|top` | `feet` | Placement within the cell. `feet` is the right default for platformer characters. |
 | `--fit error\|scale\|crop` | `error` | What to do when a detected subject is larger than the cell. |
 | `--sort ltr\|area\|none` | `ltr` | Frame ordering. `ltr` = left-to-right (matches how humans read a walk cycle). |
-| `--out DIR` | `./out/segment/<stem>/` | Output directory. |
+| `--out DIR` | `./out/<subject>/segment/` | Output directory. |
 | `--dry-run` | `false` | Print the plan, write nothing. |
 | `--json` | global | `{ok, data, error}` envelope. |
 
@@ -208,7 +208,7 @@ Reads one PNG, produces a frame directory and manifest. One-shot by default; eve
 **Text output (default):**
 
 ```
-wrote: out/segment/knight_canvas/ (4 frames, 32x32 each)
+wrote: out/knight_canvas/segment/ (4 frames, 32x32 each)
 detected: 4 components (min_area=64, threshold=128, erode=0)
 anchor: feet
 ```
@@ -219,7 +219,7 @@ anchor: feet
 {
   "ok": true,
   "data": {
-    "out": "out/segment/knight_canvas/",
+    "out": "out/knight_canvas/segment/",
     "cell": {"w": 32, "h": 32},
     "anchor": "feet",
     "threshold": 128,
@@ -256,7 +256,7 @@ anchor: feet
 sprite-gen inspect sheet messy.png --json
 # -> reports aa_score, non-trivial fractional-alpha count, huge bbox
 sprite-gen segment subjects messy.png --cell 32x32 --expected 4 --json
-# -> writes 4 clean 32x32 frames to out/segment/messy/
+# -> writes 4 clean 32x32 frames to out/messy/segment/
 ```
 
 No code dependency between the two commands; they just compose well because both operate on one image and speak the same envelope shape.
@@ -303,7 +303,7 @@ Round-trip with plan 07 (`slice`):
 ## Acceptance criteria
 
 1. `go test ./...` passes.
-2. `sprite-gen segment subjects synthetic_4_blobs.png --cell 32x32 --expected 4` writes 4 `frame_NNN.png` files and a valid `manifest.json` to `./out/segment/synthetic_4_blobs/`.
+2. `sprite-gen segment subjects synthetic_4_blobs.png --cell 32x32 --expected 4` writes 4 `frame_NNN.png` files and a valid `manifest.json` to `./out/synthetic_4_blobs/segment/`.
 3. `manifest.Read` on the output parses cleanly and `Frame.Rect` fields point to the *source* rectangles on the input canvas.
 4. `sprite-gen spec` shows `segment subjects` with all documented flags, so an agent discovering the command surface via `spec` finds it alongside `slice grid` / `slice auto`.
 5. Re-running the same command overwrites the output deterministically (byte-identical PNGs given byte-identical input).

@@ -148,7 +148,7 @@ Reads all `frame_*.png` files from DIR (or just the frame list in
 
 Flags:
 - `--anchor centroid|bbox|feet` (default `feet`)
-- `--out DIR` (default: `./out/align/<stem>/`)
+- `--out DIR` (default: `./out/<subject>/align/`)
 - `--dry-run`
 - global `--json`
 
@@ -163,7 +163,7 @@ Behavior:
 Text output:
 
 ```
-wrote: out/align/drifting_walk/ (4 frames)
+wrote: out/drifting_walk/align/ (4 frames)
 anchor: feet
 target_pivot: 16,31
 frame offsets: [0,2] [-1,0] [0,0] [1,-1]
@@ -175,7 +175,7 @@ JSON output:
 {
   "ok": true,
   "data": {
-    "out": "out/align/drifting_walk/",
+    "out": "out/drifting_walk/align/",
     "anchor": "feet",
     "target_pivot": {"x": 16, "y": 31},
     "frames": [
@@ -194,7 +194,7 @@ Compare two single-frame PNG files.
 
 Flags:
 - `--tolerance N` (default 0): channel difference threshold to count as a diff
-- `--out FILE` (default: `./out/diff/<stemA>_vs_<stemB>.png`)
+- `--out FILE` (default: `./out/<subjectA>_vs_<subjectB>/diff/diff.png`)
 - `--dry-run`
 - global `--json`
 
@@ -215,7 +215,7 @@ JSON output:
     "percent": 4.59,
     "bbox": {"x": 3, "y": 5, "w": 18, "h": 22},
     "tolerance": 0,
-    "out": "out/diff/frame_000_vs_frame_001.png"
+    "out": "out/frame_000_vs_frame_001/diff/diff.png"
   }
 }
 ```
@@ -253,8 +253,8 @@ Command-level tests:
 2. Running on drifting fixture:
    ```bash
    sprite-gen align frames testdata/input/align/drifting_walk --anchor feet
-   sprite-gen diff frames out/align/drifting_walk/frame_000.png \
-                          out/align/drifting_walk/frame_001.png
+   sprite-gen diff frames out/drifting_walk/align/frame_000.png \
+                          out/drifting_walk/align/frame_001.png
    ```
    The aligned frames have smaller `diff_pixels` than the unaligned originals.
 3. Manifest in the output dir has `pivot` fields set for each frame.

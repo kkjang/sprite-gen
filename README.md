@@ -35,16 +35,34 @@ computing the bbox and pivot. Tune it for softer assets with:
 sprite-gen inspect frame ./frame.png --alpha-threshold 1 --json
 ```
 
-Extract a palette from a PNG to stdout:
+Extract a palette from a PNG to the deterministic default output path:
 
 ```bash
 sprite-gen palette extract ./sheet.png --max 16
 ```
 
+Generated outputs are grouped by subject and processing stage under `out/`.
+For example, running `snap scale` on `slime3.png` writes to
+`out/slime3/snap/native.png`.
+
+Use `--out -` when you want `palette extract` on stdout for piping.
+
 Apply a palette and write to the deterministic default output path:
 
 ```bash
 sprite-gen palette apply ./sheet.png --palette ./palette.hex
+```
+
+Remove soft alpha edges, then snap the remaining visible pixels to a palette:
+
+```bash
+sprite-gen snap pixels ./sheet.png --palette ./palette.hex --alpha-threshold 128
+```
+
+Detect and undo integer nearest-neighbor upscaling:
+
+```bash
+sprite-gen snap scale ./sheet.png --factor auto
 ```
 
 List the registered command surface:

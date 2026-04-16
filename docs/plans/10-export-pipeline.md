@@ -178,7 +178,7 @@ cell padding).
 
 Flags:
 - `--format NAME` (required): registered format name
-- `--out PATH` (default: format-specific, usually `./out/export/<stem>.<ext>`)
+- `--out PATH` (default: format-specific, usually `./out/<subject>/export/<name>.<ext>`)
 - `--dry-run`
 - `--fps N` (default 8): passed to gif format
 - `--cols N`: passed to sheet-png format
@@ -195,7 +195,7 @@ Behavior:
 Text output (varies by format, shown for gif):
 
 ```
-wrote: out/export/walk_preview.gif (4 frames, 8fps, 500ms total)
+wrote: out/walk_4x1/export/walk_preview.gif (4 frames, 8fps, 500ms total)
 ```
 
 JSON output:
@@ -205,7 +205,7 @@ JSON output:
   "ok": true,
   "data": {
     "format": "gif",
-    "out": "out/export/walk_preview.gif",
+    "out": "out/walk_4x1/export/walk_preview.gif",
     "frames": 4,
     "fps": 8,
     "duration_ms": 500,
@@ -270,8 +270,8 @@ Command-level tests:
 2. Full chain:
    ```bash
    sprite-gen slice grid testdata/input/slice/walk_4x1.png --cols 4
-   sprite-gen export out/slice/walk_4x1 --format gif --fps 8 --scale 2
-   sprite-gen export out/slice/walk_4x1 --format sheet-png --cols 4
+   sprite-gen export out/walk_4x1/slice --format gif --fps 8 --scale 2
+   sprite-gen export out/walk_4x1/slice --format sheet-png --cols 4
    ```
    All three commands exit 0.
 3. The GIF is viewable (valid GIF89a header, correct frame count).
