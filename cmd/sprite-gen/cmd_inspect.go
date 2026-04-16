@@ -19,6 +19,7 @@ func init() {
 		Name:        "inspect frame",
 		Description: "Inspect a single sprite frame PNG",
 		Args:        []specreg.Arg{{Name: "path", Required: true, Description: "PNG image to inspect"}},
+		Flags:       []specreg.Flag{{Name: "alpha-threshold", Default: "8", Description: "Minimum alpha used for bbox and pivot calculations"}},
 	})
 	specreg.Register(specreg.Command{
 		Name:        "inspect sheet",
@@ -47,17 +48,23 @@ func runInspectSheet(args []string, stdout io.Writer, asJSON bool) error {
 	fs := flag.NewFlagSet("inspect sheet", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	gridMode := fs.String("grid", "auto", "grid mode: auto, none, or COLSxROWS")
-	if err := fs.Parse(args); err != nil {
+	path, parseArgs := splitSinglePathArg(args)
+	if err := fs.Parse(parseArgs); err != nil {
 		return err
 	}
-	if fs.NArg() == 0 {
+	if path == "" && fs.NArg() == 0 {
 		return fmt.Errorf("missing path for inspect sheet")
 	}
-	if fs.NArg() > 1 {
+	if path != "" && fs.NArg() != 0 {
 		return fmt.Errorf("inspect sheet takes exactly one path")
 	}
+	if path == "" && fs.NArg() > 1 {
+		return fmt.Errorf("inspect sheet takes exactly one path")
+	}
+	if path == "" {
+		path = fs.Arg(0)
+	}
 
-	path := fs.Arg(0)
 	img, err := pixel.LoadPNG(path)
 	if err != nil {
 		return err
@@ -98,33 +105,44 @@ func runInspectSheet(args []string, stdout io.Writer, asJSON bool) error {
 func runInspectFrame(args []string, stdout io.Writer, asJSON bool) error {
 	fs := flag.NewFlagSet("inspect frame", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	if err := fs.Parse(args); err != nil {
+	alphaThreshold := fs.Int("alpha-threshold", int(pixel.DefaultBBoxAlphaThreshold), "minimum alpha used for bbox and pivot calculations")
+	path, parseArgs := splitSinglePathArg(args)
+	if err := fs.Parse(parseArgs); err != nil {
 		return err
 	}
-	if fs.NArg() == 0 {
+	if path == "" && fs.NArg() == 0 {
 		return fmt.Errorf("missing path for inspect frame")
 	}
-	if fs.NArg() > 1 {
+	if path != "" && fs.NArg() != 0 {
 		return fmt.Errorf("inspect frame takes exactly one path")
 	}
+	if path == "" && fs.NArg() > 1 {
+		return fmt.Errorf("inspect frame takes exactly one path")
+	}
+	if path == "" {
+		path = fs.Arg(0)
+	}
+	if *alphaThreshold < 1 || *alphaThreshold > 255 {
+		return fmt.Errorf("invalid --alpha-threshold %d; want 1-255", *alphaThreshold)
+	}
 
-	path := fs.Arg(0)
 	img, err := pixel.LoadPNG(path)
 	if err != nil {
 		return err
 	}
 
 	stats := pixel.ComputeStats(img)
-	bbox := pixel.BBox(img, 0)
+	bbox := pixel.BBox(img, uint8(*alphaThreshold-1))
 	resp := inspectFrameResponse{
-		Path:         path,
-		W:            stats.W,
-		H:            stats.H,
-		BBox:         rectSummaryFromRect(bbox),
-		PivotHint:    pivotHintFromRect(bbox),
-		UniqueColors: stats.UniqueColors,
-		Alpha:        alphaSummaryFromStats(stats),
-		AAScore:      stats.AAScore,
+		Path:               path,
+		W:                  stats.W,
+		H:                  stats.H,
+		BBox:               rectSummaryFromRect(bbox),
+		BBoxAlphaThreshold: *alphaThreshold,
+		PivotHint:          pivotHintFromRect(bbox),
+		UniqueColors:       stats.UniqueColors,
+		Alpha:              alphaSummaryFromStats(stats),
+		AAScore:            stats.AAScore,
 	}
 
 	return jsonout.Write(stdout, asJSON, renderInspectFrameText(resp), resp)
@@ -142,14 +160,15 @@ type inspectSheetResponse struct {
 }
 
 type inspectFrameResponse struct {
-	Path         string       `json:"path"`
-	W            int          `json:"w"`
-	H            int          `json:"h"`
-	BBox         rectSummary  `json:"bbox"`
-	PivotHint    pivotHint    `json:"pivot_hint"`
-	UniqueColors int          `json:"unique_colors"`
-	Alpha        alphaSummary `json:"alpha"`
-	AAScore      float64      `json:"aa_score"`
+	Path               string       `json:"path"`
+	W                  int          `json:"w"`
+	H                  int          `json:"h"`
+	BBox               rectSummary  `json:"bbox"`
+	BBoxAlphaThreshold int          `json:"bbox_alpha_threshold"`
+	PivotHint          pivotHint    `json:"pivot_hint"`
+	UniqueColors       int          `json:"unique_colors"`
+	Alpha              alphaSummary `json:"alpha"`
+	AAScore            float64      `json:"aa_score"`
 }
 
 type alphaSummary struct {
@@ -259,7 +278,7 @@ func renderInspectFrameText(resp inspectFrameResponse) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "path: %s\n", resp.Path)
 	fmt.Fprintf(&b, "size: %dx%d\n", resp.W, resp.H)
-	fmt.Fprintf(&b, "bbox: x=%d y=%d w=%d h=%d\n", resp.BBox.X, resp.BBox.Y, resp.BBox.W, resp.BBox.H)
+	fmt.Fprintf(&b, "bbox: x=%d y=%d w=%d h=%d (alpha >= %d)\n", resp.BBox.X, resp.BBox.Y, resp.BBox.W, resp.BBox.H, resp.BBoxAlphaThreshold)
 	fmt.Fprintf(&b, "pivot_hint: %s x=%d y=%d\n", resp.PivotHint.Anchor, resp.PivotHint.X, resp.PivotHint.Y)
 	fmt.Fprintf(&b, "colors: %d (capped at %d)\n", resp.UniqueColors, pixel.MaxUniqueColors)
 	fmt.Fprintf(&b, "alpha: %d transparent, %d opaque, %d fractional\n", resp.Alpha.Transparent, resp.Alpha.Opaque, resp.Alpha.Fractional)
