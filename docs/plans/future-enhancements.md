@@ -45,6 +45,10 @@ A living backlog of features we've thought about but explicitly deferred. Not a 
 - 3D model generation (currently out of scope — different tool).
 - Live preview GUI (currently out of scope — GIF preview only in v1).
 
+## Testing
+
+- Add a small curated set of real PNG fixtures under `testdata/` for heavier integration coverage of messy generated assets: soft alpha halos, scattered subjects, near-touching components, and `segment subjects` tuning paths like `--erode`, `--dilate`, and `--fit crop`. Keep these repo-owned and deterministic rather than depending on local `.cache` assets in normal test runs.
+
 ## Engine integration
 
 - [`godot-bridge`](https://github.com/kkjang/godot-bridge) integration (deferred indefinitely per the overview's "Out of scope").

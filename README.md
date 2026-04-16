@@ -84,6 +84,17 @@ Auto-detect a gutter-separated sheet grid and write the same frame-set output:
 sprite-gen slice auto ./sheet.png --min-gap 1
 ```
 
+Segment a messy generated canvas into normalized frame cells when the model
+ignored the requested sheet layout:
+
+```bash
+sprite-gen segment subjects ./messy_canvas.png --cell 32x32 --expected 4 --anchor feet
+```
+
+`segment subjects` thresholds alpha, optionally erodes or dilates the binary
+mask, labels connected components, filters out small speckles, and writes the
+same `frame_NNN.png` plus `manifest.json` contract as `slice`.
+
 `slice grid --trim` writes trimmed PNGs and records the trimmed source rect in
 `manifest.json`, so downstream commands still know where each frame came from in
 the original sheet.

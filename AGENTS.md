@@ -12,6 +12,7 @@
 - Keep changes small and verify assumptions against the current code before expanding scope.
 - `slice auto` should fail on weak grid detection instead of silently guessing a fallback layout.
 - `prep alpha` is the explicit cleanup step for transparent PNGs with low-alpha haze before `slice`; later commands may reuse the same primitives but must not require prep as a separate prerequisite.
+- `segment subjects` is the alternate one-image-to-frame-set path for messy generated canvases; it writes the same `frames + manifest` contract as `slice`, and `manifest.frames[].rect` records source-space component bounds from the original canvas.
 
 ## Release Conventions
 
