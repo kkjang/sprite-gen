@@ -18,7 +18,7 @@ Commands are grouped by **what they read** and **what they produce**:
 | Nothing | Metadata | `version`, `spec` |
 | Prompt | One image | `generate image` |
 | One image | Report (no files) | `inspect sheet`, `inspect frame` |
-| One image | One image | `snap pixels`, `snap scale`, `palette apply` |
+| One image | One image | `snap pixels`, `snap scale`, `prep alpha`, `palette apply` |
 | One image | Palette file | `palette extract` |
 | One image | Many images + manifest | `slice grid`, `slice auto`, `segment subjects` |
 | Many images | Many images + manifest | `align frames` |
@@ -68,13 +68,14 @@ After all eleven plans are merged, an agent can run the full pipeline end-to-end
 sprite-gen generate image "knight walk cycle, 4 frames, 32x32, pixel art" \
     --n 1 --size 1024x1024 --out knight.png
 
-# Clean up (plans 05, 06)
+# Clean up (plans 05, 06, 07)
 sprite-gen snap scale   knight.png --factor auto
 sprite-gen palette extract out/knight/snap/native.png --max 16
 sprite-gen snap pixels  out/knight/snap/native.png --palette out/knight/palette/extracted-16.hex
+sprite-gen prep alpha   out/knight/snap/snapped.png --alpha-threshold 128
 
 # Slice into frames (plan 07)
-sprite-gen slice grid   out/knight/snap/snapped.png --cols 4 --rows 1 --out frames/
+sprite-gen slice grid   out/knight/prep/clean.png --cols 4 --rows 1 --out frames/
 
 # Fix drift, verify (plans 09, 10)
 sprite-gen align frames frames/ --anchor feet

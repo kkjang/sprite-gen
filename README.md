@@ -59,11 +59,40 @@ Remove soft alpha edges, then snap the remaining visible pixels to a palette:
 sprite-gen snap pixels ./sheet.png --palette ./palette.hex --alpha-threshold 128
 ```
 
+Clear low-alpha background haze from a generated transparent PNG before
+attempting to slice it:
+
+```bash
+sprite-gen prep alpha ./sheet.png --alpha-threshold 128
+```
+
 Detect and undo integer nearest-neighbor upscaling:
 
 ```bash
 sprite-gen snap scale ./sheet.png --factor auto
 ```
+
+Slice a clean sprite sheet into per-frame PNGs plus `manifest.json`:
+
+```bash
+sprite-gen slice grid ./sheet.png --cols 4 --rows 1
+```
+
+Auto-detect a gutter-separated sheet grid and write the same frame-set output:
+
+```bash
+sprite-gen slice auto ./sheet.png --min-gap 1
+```
+
+`slice grid --trim` writes trimmed PNGs and records the trimmed source rect in
+`manifest.json`, so downstream commands still know where each frame came from in
+the original sheet.
+
+For generated sprite sheets, ask for a fully transparent background, explicit
+frame count and layout, fixed cell size, and transparent gutters between cells.
+Avoid glow, floor shadows, blur, text, and borders. Even with a good prompt,
+`prep alpha` helps clean residual background haze before `slice`, while a truly
+messy canvas still belongs to `segment subjects`.
 
 List the registered command surface:
 
