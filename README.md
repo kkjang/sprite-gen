@@ -139,6 +139,18 @@ inputs. It only chooses integer downscale factors, measures the visible subject
 bbox with `--alpha-threshold`, and leaves the image unchanged when the requested
 target would otherwise require upscaling.
 
+Resize a single PNG for delivery size without changing its underlying detail
+budget:
+
+```bash
+sprite-gen resize image ./sheet.png --up 2
+```
+
+`resize image` is a late-stage presentation step. Use `normalize detail` when
+you want fewer effective source pixels in the art itself; use `resize image`
+when you want the same art drawn larger or smaller with integer nearest-neighbor
+sampling.
+
 Slice a clean sprite sheet into per-frame PNGs plus `manifest.json`:
 
 ```bash
@@ -171,11 +183,26 @@ sprite-gen align frames ./out/knight/slice --anchor feet
 `align frames` writes every output frame onto a shared canvas and updates
 `manifest.json` so each frame has the same output-space `pivot`.
 
+Resize an aligned or sliced frame-set before exporting multiple delivery assets:
+
+```bash
+sprite-gen resize frames ./out/knight/align --up 2
+```
+
+`resize frames` preserves each frame's source-space `rect`, scales output-space
+fields like `cell_w`, `cell_h`, `w`, `h`, and any existing `pivot`, and writes a
+new `manifest.json` even when the input directory started as plain
+`frame_*.png` files.
+
 Export an aligned or sliced frame-set to an animated GIF preview:
 
 ```bash
 sprite-gen export ./out/knight/align --format gif --fps 8 --scale 2
 ```
+
+`export --format gif --scale N` remains a preview-only convenience. Use
+`resize frames` when you want multiple downstream exports to share the same
+delivery size.
 
 Pack a frame-set back into a single sprite-sheet PNG:
 
@@ -200,14 +227,16 @@ problem.
 sprite-gen normalize detail ./walk.png --target-height 48
 sprite-gen segment subjects ./out/walk/normalize/detail.png --anchor feet
 sprite-gen align frames ./out/walk/segment --anchor feet
-sprite-gen export ./out/walk/align --format gif --fps 8 --scale 2
+sprite-gen resize frames ./out/walk/align --up 2
+sprite-gen export ./out/walk/resize --format gif --fps 8
 
 # Opaque fake background first
 sprite-gen prep background ./walk.png --method auto
 sprite-gen normalize detail ./out/walk/prep/background.png --target-height 48
 sprite-gen segment subjects ./out/walk/normalize/detail.png --anchor feet
 sprite-gen align frames ./out/walk/segment --anchor feet
-sprite-gen export ./out/walk/align --format sheet-png --cols 4
+sprite-gen resize frames ./out/walk/align --up 2
+sprite-gen export ./out/walk/resize --format sheet-png --cols 4
 ```
 
 Use the short pipeline when:
@@ -232,7 +261,8 @@ sprite-gen snap pixels ./out/walk/snap/native.png --palette ./out/walk/palette/e
 sprite-gen normalize detail ./out/walk/snap/snapped.png --target-height 48
 sprite-gen segment subjects ./out/walk/normalize/detail.png --anchor feet
 sprite-gen align frames ./out/walk/segment --anchor feet
-sprite-gen export ./out/walk/align --format gif --fps 8 --scale 2
+sprite-gen resize frames ./out/walk/align --up 2
+sprite-gen export ./out/walk/resize --format gif --fps 8
 ```
 
 Use the full pipeline when:
@@ -249,6 +279,7 @@ Reasons to prefer it:
 Caveats:
 - `snap scale` only helps when the source was truly integer-upscaled; on native-size art it is often a no-op
 - `normalize detail` is intentional style normalization, not corrective upscale detection; use it only when you want assets to converge toward a shared detail budget
+- `resize image` and `resize frames` are delivery-size steps; they preserve the cleaned art style and only change final presentation size with integer nearest-neighbor sampling
 - `palette extract` learns from the current pixels, so if the source still contains edge contamination or background residue, the extracted palette can preserve those bad colors
 - on fully opaque generated images, run `prep background` first and visually inspect the result before extracting a palette
 - if you see a bright fringe or white outer layer after the full pipeline, the cleanup step likely left contaminated edge colors behind; try improving background removal first or use a curated palette instead of extracting one from the dirty image

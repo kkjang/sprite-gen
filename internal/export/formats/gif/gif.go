@@ -12,6 +12,7 @@ import (
 
 	internalexport "github.com/kkjang/sprite-gen/internal/export"
 	internalpalette "github.com/kkjang/sprite-gen/internal/palette"
+	internalresize "github.com/kkjang/sprite-gen/internal/resize"
 )
 
 type GIF struct{}
@@ -58,7 +59,10 @@ func (GIF) Export(ctx *internalexport.Context) (*internalexport.Result, error) {
 	for i, frame := range ctx.Frames {
 		img := frame.Image
 		if scale > 1 {
-			img = upscale(img, scale)
+			img, err = internalresize.Image(img, internalresize.Options{Direction: internalresize.Up, Factor: scale})
+			if err != nil {
+				return nil, err
+			}
 		}
 		animation.Image[i] = paletted(img)
 		animation.Delay[i] = delay
@@ -153,25 +157,6 @@ func writeGIF(path string, animation *stdgif.GIF) error {
 		return fmt.Errorf("encode GIF %q: %w", path, err)
 	}
 	return nil
-}
-
-func upscale(img *image.NRGBA, factor int) *image.NRGBA {
-	if factor <= 1 {
-		return img
-	}
-	bounds := img.Bounds()
-	out := image.NewNRGBA(image.Rect(0, 0, bounds.Dx()*factor, bounds.Dy()*factor))
-	for y := 0; y < bounds.Dy(); y++ {
-		for x := 0; x < bounds.Dx(); x++ {
-			c := img.NRGBAAt(bounds.Min.X+x, bounds.Min.Y+y)
-			for yy := 0; yy < factor; yy++ {
-				for xx := 0; xx < factor; xx++ {
-					out.SetNRGBA(x*factor+xx, y*factor+yy, c)
-				}
-			}
-		}
-	}
-	return out
 }
 
 func paletted(img *image.NRGBA) *image.Paletted {
