@@ -64,6 +64,8 @@ func isOutputStage(name string) bool {
 	switch name {
 	case "align", "diff", "export", "generate", "palette", "segment", "slice", "snap":
 		return true
+	case "normalize":
+		return true
 	case "prep":
 		return true
 	default:

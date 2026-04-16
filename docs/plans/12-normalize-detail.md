@@ -1,5 +1,7 @@
 # Plan 12 — Normalize Detail
 
+Status: implemented.
+
 ## Goal
 
 Add `sprite-gen normalize detail PATH` as an intentional style-normalization step for single PNG inputs. The command should help a project converge on a consistent level of geometric detail by scaling a sprite toward a target visible subject height using integer nearest-neighbor resampling.
