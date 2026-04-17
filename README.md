@@ -2,6 +2,26 @@
 
 Minimal Go CLI for cleaning up AI-generated pixel art and exporting it to game-engine-native formats.
 
+## Install In Another Project
+
+Install the latest tagged release:
+
+```bash
+go install github.com/kkjang/sprite-gen/cmd/sprite-gen@latest
+```
+
+Install a specific release with semver pinning:
+
+```bash
+go install github.com/kkjang/sprite-gen/cmd/sprite-gen@v0.1.1
+```
+
+Verify the installed binary:
+
+```bash
+sprite-gen version
+```
+
 ## Pipeline
 
 ```mermaid
@@ -321,7 +341,7 @@ This repo ships a reusable OpenCode-compatible skill at
 To use it from another project:
 
 1. Copy `.agents/skills/sprite-gen/` into that project's `.agents/skills/` directory.
-2. Install `sprite-gen` so the binary is available on `PATH` for the agent.
+2. Install `sprite-gen` so the binary is available on `PATH` for the agent, preferably from a tagged release such as `go install github.com/kkjang/sprite-gen/cmd/sprite-gen@v0.1.1`.
 3. Let the agent load the `sprite-gen` skill when it needs to inspect, clean, slice or segment, align, resize, or export sprite assets.
 
 The skill is written against the live CLI registry exposed by `sprite-gen --json spec`
@@ -329,20 +349,28 @@ and currently assumes only the shipped `gif` and `sheet` export formats.
 
 ## Install
 
+Install from the current checkout during local development:
+
 ```bash
 go install ./cmd/sprite-gen
 ```
 
-Install the latest tagged release:
+Install the latest tagged release for another project:
 
 ```bash
 go install github.com/kkjang/sprite-gen/cmd/sprite-gen@latest
 ```
 
-Install a specific release:
+Install a specific release with semver pinning:
 
 ```bash
-go install github.com/kkjang/sprite-gen/cmd/sprite-gen@v0.1.0
+go install github.com/kkjang/sprite-gen/cmd/sprite-gen@v0.1.1
+```
+
+Verify the installed binary:
+
+```bash
+sprite-gen version
 ```
 
 ## Release process

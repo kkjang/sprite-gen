@@ -19,6 +19,9 @@ metadata:
 ## Before using me
 
 - Ensure the `sprite-gen` binary is installed and available on `PATH`.
+- Install the latest release with `go install github.com/kkjang/sprite-gen/cmd/sprite-gen@latest` when the user wants the newest tagged build.
+- Prefer a pinned release such as `go install github.com/kkjang/sprite-gen/cmd/sprite-gen@v0.1.1` when the project wants reproducible setup.
+- Run `sprite-gen version` after installation to verify the binary is available.
 - Start by running `sprite-gen --json spec` to discover the current command surface.
 - Run `sprite-gen export --list-formats` before choosing an export target.
 - Do not assume planned commands or engine-specific exporters exist unless the live registry shows them.

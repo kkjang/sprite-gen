@@ -20,6 +20,7 @@
 - `export` is the single format-registry entry point for frame-set outputs; new formats self-register from `init()` without changing command dispatch.
 - `export --format sheet-png` writes a single PNG artifact at `--out`; it does not write a companion manifest and may pad mixed-size inputs into max-size cells.
 - Prefer the short pipeline (`prep background? -> normalize detail? -> segment/slice -> align -> resize? -> export`) when the problem is mostly layout/background cleanup; prefer the full pipeline (`... -> snap scale -> palette extract -> snap pixels -> normalize detail? -> segment/slice -> align -> resize? -> export`) when the image also has palette noise, shimmer, or soft-edge artifacts. Visually validate full-pipeline results on opaque-background inputs because extracted palettes can preserve fringe colors left by incomplete cleanup.
+- External install instructions must stay discoverable in both `README.md` and `.agents/skills/sprite-gen/SKILL.md`; prefer released `go install github.com/kkjang/sprite-gen/cmd/sprite-gen@vX.Y.Z` guidance for reproducible project setup, with `@latest` as the moving-target option.
 
 ## Release Conventions
 
