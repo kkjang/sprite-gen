@@ -313,6 +313,20 @@ List the registered command surface:
 sprite-gen spec --markdown
 ```
 
+## OpenCode Skill
+
+This repo ships a reusable OpenCode-compatible skill at
+`.agents/skills/sprite-gen/SKILL.md`.
+
+To use it from another project:
+
+1. Copy `.agents/skills/sprite-gen/` into that project's `.agents/skills/` directory.
+2. Install `sprite-gen` so the binary is available on `PATH` for the agent.
+3. Let the agent load the `sprite-gen` skill when it needs to inspect, clean, slice or segment, align, resize, or export sprite assets.
+
+The skill is written against the live CLI registry exposed by `sprite-gen --json spec`
+and currently assumes only the shipped `gif` and `sheet` export formats.
+
 ## Install
 
 ```bash
