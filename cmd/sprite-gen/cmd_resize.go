@@ -291,11 +291,13 @@ func buildResizedManifest(set *frameSet, resized []*image.NRGBA, opts internalre
 	out.Frames = make([]manifest.Frame, len(set.frames))
 	for i, frame := range set.frames {
 		out.Frames[i] = manifest.Frame{
-			Index: frame.Index,
-			Path:  frame.Path,
-			Rect:  frame.Rect,
-			W:     resized[i].Bounds().Dx(),
-			H:     resized[i].Bounds().Dy(),
+			Index:      frame.Index,
+			Path:       frame.Path,
+			Rect:       frame.Rect,
+			Row:        frame.Row,
+			Col:        frame.Col,
+			DurationMS: frame.DurationMS,
+			Tag:        frame.Tag,
 		}
 		if set.manifest == nil {
 			continue

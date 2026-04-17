@@ -79,10 +79,12 @@ func (GIF) Export(ctx *internalexport.Context) (*internalexport.Result, error) {
 	animation.Config.Width = frameW
 	animation.Config.Height = frameH
 
+	gifPath := gifOutputPath(ctx.Subject, ctx.OutPath)
+
 	verb := "wrote"
 	if ctx.DryRun {
 		verb = "would write"
-	} else if err := writeGIF(ctx.OutPath, animation); err != nil {
+	} else if err := writeGIF(gifPath, animation); err != nil {
 		return nil, err
 	}
 
@@ -90,6 +92,7 @@ func (GIF) Export(ctx *internalexport.Context) (*internalexport.Result, error) {
 	data := map[string]any{
 		"format":         ctx.Format,
 		"out":            ctx.OutPath,
+		"gif":            gifPath,
 		"frames":         len(ctx.Frames),
 		"fps":            fps,
 		"frame_delay_cs": delay,
@@ -100,7 +103,7 @@ func (GIF) Export(ctx *internalexport.Context) (*internalexport.Result, error) {
 		"frame_h":        frameH,
 		"dry_run":        ctx.DryRun,
 	}
-	text := fmt.Sprintf("%s: %s (%d frames, %d fps target, %dms total)\n", verb, ctx.OutPath, len(ctx.Frames), fps, durationMS)
+	text := fmt.Sprintf("%s: %s (%d frames, %d fps target, %dms total)\n", verb, gifPath, len(ctx.Frames), fps, durationMS)
 	return &internalexport.Result{Text: text, Data: data}, nil
 }
 
@@ -149,6 +152,13 @@ func delayForFPS(fps int) int {
 		return 1
 	}
 	return delay
+}
+
+func gifOutputPath(subject, outDir string) string {
+	if subject == "" {
+		subject = "artifact"
+	}
+	return filepath.Join(outDir, subject+"_preview.gif")
 }
 
 func writeGIF(path string, animation *stdgif.GIF) error {

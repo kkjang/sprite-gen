@@ -126,8 +126,17 @@ func TestRunResizeFramesScalesManifestAndWarnsOnMissingPivot(t *testing.T) {
 	if gotManifest.Frames[1].Pivot != nil {
 		t.Fatalf("frame 1 pivot = %+v, want nil preserved", gotManifest.Frames[1].Pivot)
 	}
-	if gotManifest.Frames[0].W != 32 || gotManifest.Frames[0].H != 32 {
-		t.Fatalf("frame 0 output size = %dx%d, want 32x32", gotManifest.Frames[0].W, gotManifest.Frames[0].H)
+	if gotManifest.Frames[0].Row == nil || *gotManifest.Frames[0].Row != 0 {
+		t.Fatalf("frame 0 row = %+v, want 0", gotManifest.Frames[0].Row)
+	}
+	if gotManifest.Frames[0].Col == nil || *gotManifest.Frames[0].Col != 0 {
+		t.Fatalf("frame 0 col = %+v, want 0", gotManifest.Frames[0].Col)
+	}
+	if gotManifest.Frames[0].Tag != "walk" {
+		t.Fatalf("frame 0 tag = %q, want walk", gotManifest.Frames[0].Tag)
+	}
+	if gotManifest.Frames[0].DurationMS == nil || *gotManifest.Frames[0].DurationMS != 80 {
+		t.Fatalf("frame 0 duration_ms = %+v, want 80", gotManifest.Frames[0].DurationMS)
 	}
 
 	frameImg, err := pixel.LoadPNG(filepath.Join(outDir, "frame_000.png"))
@@ -198,11 +207,13 @@ func writeResizeFrameSet(t *testing.T, dir string, withManifest bool) {
 		}
 		writeCommandPNG(t, path, img)
 		frame := manifest.Frame{
-			Index: i,
-			Path:  filepath.Base(path),
-			Rect:  manifest.Rect{X: 3 + i*16, Y: 4, W: 16, H: 16},
-			W:     16,
-			H:     16,
+			Index:      i,
+			Path:       filepath.Base(path),
+			Rect:       manifest.Rect{X: 3 + i*16, Y: 4, W: 16, H: 16},
+			Row:        intPtr(0),
+			Col:        intPtr(i),
+			Tag:        "walk",
+			DurationMS: intPtr(80 + i),
 		}
 		if i == 0 {
 			frame.Pivot = &manifest.Point{X: 5, Y: 11}
@@ -214,4 +225,8 @@ func writeResizeFrameSet(t *testing.T, dir string, withManifest bool) {
 			t.Fatalf("manifest.Write() error = %v", err)
 		}
 	}
+}
+
+func intPtr(value int) *int {
+	return &value
 }

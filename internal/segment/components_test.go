@@ -57,15 +57,31 @@ func TestFilterKeepsEqualOrGreaterAreas(t *testing.T) {
 	}
 }
 
-func TestSortLTRBreaksTiesByY(t *testing.T) {
+func TestSortLTRUsesRowMajorReadingOrder(t *testing.T) {
 	components := []Component{
 		{ID: 1, BBox: image.Rect(10, 20, 12, 22)},
 		{ID: 2, BBox: image.Rect(5, 30, 7, 32)},
 		{ID: 3, BBox: image.Rect(5, 10, 7, 12)},
 	}
 	SortLTR(components)
-	if got := []int{components[0].ID, components[1].ID, components[2].ID}; got[0] != 3 || got[1] != 2 || got[2] != 1 {
-		t.Fatalf("SortLTR() IDs = %v, want [3 2 1]", got)
+	if got := []int{components[0].ID, components[1].ID, components[2].ID}; got[0] != 3 || got[1] != 1 || got[2] != 2 {
+		t.Fatalf("SortLTR() IDs = %v, want [3 1 2]", got)
+	}
+}
+
+func TestGroupRowsClustersVerticalDriftIntoSharedRows(t *testing.T) {
+	components := []Component{
+		{ID: 1, BBox: image.Rect(0, 0, 8, 12)},
+		{ID: 2, BBox: image.Rect(16, 2, 24, 14)},
+		{ID: 3, BBox: image.Rect(1, 30, 9, 42)},
+		{ID: 4, BBox: image.Rect(15, 28, 23, 40)},
+	}
+	rows := GroupRows(components)
+	if len(rows) != 2 {
+		t.Fatalf("len(GroupRows()) = %d, want 2", len(rows))
+	}
+	if got := []int{rows[0].Components[0].ID, rows[0].Components[1].ID, rows[1].Components[0].ID, rows[1].Components[1].ID}; got[0] != 1 || got[1] != 2 || got[2] != 3 || got[3] != 4 {
+		t.Fatalf("GroupRows() IDs = %v, want [1 2 3 4]", got)
 	}
 }
 

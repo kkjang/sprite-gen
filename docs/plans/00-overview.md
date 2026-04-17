@@ -55,7 +55,7 @@ Status legend: ✅ Done · 🚧 In progress · 📋 Planned
 | 08 | ✅ Done | Segment subjects | Alternate path to `frames + manifest` from a *messy* AI-generated canvas: threshold alpha, connected-component label each subject, normalize into fixed-size cells with baseline alignment. Composes with align/diff/export unchanged. | `08-segment.md` |
 | 08.5 | ✅ Done | Background cleanup | Adds `prep background` for fake transparency and opaque generated backgrounds using extensible cleanup methods (`key`, `edge`). | `08.5-background-cleanup.md` |
 | 09 | ✅ Done | Align + Diff | Frame-level ops that depend on slice or segment having run. Align fixes drift; diff verifies results. | `09-align-diff.md` |
-| 10 | ✅ Done | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet-png` formats (both engine-agnostic). | `10-export-pipeline.md` |
+| 10 | ✅ Done | Export pipeline + generic formats | Introduces the format registry and the `export` command. Ships `gif` and `sheet` formats (both engine-agnostic). | `10-export-pipeline.md` |
 | 11 | 📋 Planned | Godot export formats | First engine-specific formats: `godot-spriteframes` and `godot-atlas`. Validates that the registry extends cleanly. | `11-godot-export.md` |
 | 12 | ✅ Done | Normalize detail | Adds an intentional project-consistency step for single-image inputs: scale sprites toward a target visible height or explicit integer factor without overloading `snap scale`. Reuses mature single-image primitives and composes with both the short and full pipelines. Implemented in this branch. | `12-normalize-detail.md` |
 | 13 | ✅ Done | Resize for delivery size | Adds a generic late-stage `resize` command family for integer nearest-neighbor up/down resizing of single images and frame sets without conflating presentation size with detail normalization. Implemented in this branch. | `13-resize.md` |
@@ -87,7 +87,7 @@ sprite-gen slice grid   out/knight/normalize/detail.png --cols 4 --rows 1 --out 
 # Fix drift, optional delivery resize, verify (plans 09, 10, 13)
 sprite-gen align frames frames/ --anchor feet
 sprite-gen resize frames out/knight/align --up 2
-sprite-gen export       out/knight/resize --format gif --fps 8 --out preview.gif
+sprite-gen export       out/knight/resize --format gif --fps 8 --out out/knight/export
 
 # Export to Godot (plan 11)
 sprite-gen export       out/knight/resize --format godot-spriteframes --anim walk:*.png --out walk.tres
@@ -170,8 +170,8 @@ sprite-gen/
       formats/
         gif/
           gif.go
-        sheetpng/
-          sheetpng.go
+        sheet/
+          sheet.go
         godot/
           spriteframes.go
           atlas.go

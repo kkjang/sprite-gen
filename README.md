@@ -189,8 +189,8 @@ Resize an aligned or sliced frame-set before exporting multiple delivery assets:
 sprite-gen resize frames ./out/knight/align --up 2
 ```
 
-`resize frames` preserves each frame's source-space `rect`, scales output-space
-fields like `cell_w`, `cell_h`, `w`, `h`, and any existing `pivot`, and writes a
+`resize frames` preserves each frame's source-space rectangle coordinates,
+scales output-space fields like `cell_w`, `cell_h`, and any existing `pivot`, and writes a
 new `manifest.json` even when the input directory started as plain
 `frame_*.png` files.
 
@@ -204,16 +204,17 @@ sprite-gen export ./out/knight/align --format gif --fps 8 --scale 2
 `resize frames` when you want multiple downstream exports to share the same
 delivery size.
 
-Pack a frame-set back into a single sprite-sheet PNG:
+Pack a frame-set back into a single sprite-sheet PNG plus companion JSON manifest:
 
 ```bash
-sprite-gen export ./out/knight/align --format sheet-png --cols 4
+sprite-gen export ./out/knight/align --format sheet --cols 4
 ```
 
 Use `sprite-gen export --list-formats` to discover registered output formats.
-`sheet-png` writes only the PNG artifact named by `--out`; it does not emit a
-companion `manifest.json`. When input frames have mixed sizes, it pads them into
-the largest cell size in the packed sheet.
+`sheet` writes `<subject>_sheet.png` and `<subject>_sheet.json` into the `--out`
+directory. Frame coordinates in the manifest are serialized as flat `x`, `y`, `w`,
+and `h` fields so downstream importers can consume the sheet directly. When input
+frames have mixed sizes, it pads them into the largest cell size in the packed sheet.
 
 ## Choosing A Pipeline
 
@@ -236,7 +237,7 @@ sprite-gen normalize detail ./out/walk/prep/background.png --target-height 48
 sprite-gen segment subjects ./out/walk/normalize/detail.png --anchor feet
 sprite-gen align frames ./out/walk/segment --anchor feet
 sprite-gen resize frames ./out/walk/align --up 2
-sprite-gen export ./out/walk/resize --format sheet-png --cols 4
+sprite-gen export ./out/walk/resize --format sheet --cols 4
 ```
 
 Use the short pipeline when:

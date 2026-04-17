@@ -69,13 +69,15 @@ func SliceGrid(img image.Image, source string, cols, rows int, trim bool) (*Resu
 			}
 
 			path := fmt.Sprintf("frame_%03d.png", index)
+			rowValue := row
+			colValue := col
 			frames = append(frames, Frame{Index: index, Path: path, Rect: outRect, Image: outImg})
 			manifestFrames = append(manifestFrames, manifest.Frame{
 				Index: index,
 				Path:  path,
 				Rect:  manifest.Rect{X: outRect.Min.X, Y: outRect.Min.Y, W: outRect.Dx(), H: outRect.Dy()},
-				W:     outImg.Bounds().Dx(),
-				H:     outImg.Bounds().Dy(),
+				Row:   &rowValue,
+				Col:   &colValue,
 			})
 			index++
 		}

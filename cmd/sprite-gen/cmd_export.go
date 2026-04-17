@@ -8,7 +8,7 @@ import (
 
 	internalexport "github.com/kkjang/sprite-gen/internal/export"
 	_ "github.com/kkjang/sprite-gen/internal/export/formats/gif"
-	_ "github.com/kkjang/sprite-gen/internal/export/formats/sheetpng"
+	_ "github.com/kkjang/sprite-gen/internal/export/formats/sheet"
 	"github.com/kkjang/sprite-gen/internal/jsonout"
 	"github.com/kkjang/sprite-gen/internal/specreg"
 )
@@ -22,13 +22,13 @@ func init() {
 		Flags: []specreg.Flag{
 			{Name: "format", Description: "Registered export format name"},
 			{Name: "list-formats", Default: "false", Description: "List available export formats and exit"},
-			{Name: "out", Description: "Output path for the exported artifact"},
+			{Name: "out", Description: "Output directory for exported artifacts"},
 			{Name: "dry-run", Default: "false", Description: "Report output path without writing"},
 			{Name: "fps", Default: "8", Description: "GIF frame rate in frames per second"},
 			{Name: "scale", Default: "1", Description: "GIF integer preview upscale factor"},
 			{Name: "loop", Default: "true", Description: "GIF loop forever when true"},
-			{Name: "cols", Description: "sheet-png columns; default is auto-packed"},
-			{Name: "padding", Default: "0", Description: "sheet-png padding in pixels between cells"},
+			{Name: "cols", Description: "sheet columns; default is auto-packed"},
+			{Name: "padding", Default: "0", Description: "sheet padding in pixels between cells"},
 		},
 	})
 }
@@ -38,13 +38,13 @@ func runExport(args []string, stdout, _ io.Writer, asJSON bool) error {
 	fs.SetOutput(io.Discard)
 	formatName := fs.String("format", "", "registered export format name")
 	listFormats := fs.Bool("list-formats", false, "list available export formats and exit")
-	outPath := fs.String("out", "", "output path for the exported artifact")
+	outPath := fs.String("out", "", "output directory for exported artifacts")
 	dryRun := fs.Bool("dry-run", false, "report output path without writing")
 	fps := fs.Int("fps", 8, "GIF frame rate in frames per second")
 	scale := fs.Int("scale", 1, "GIF integer preview upscale factor")
 	loop := fs.Bool("loop", true, "GIF loop forever when true")
-	cols := fs.Int("cols", 0, "sheet-png columns; default is auto-packed")
-	padding := fs.Int("padding", 0, "sheet-png padding in pixels between cells")
+	cols := fs.Int("cols", 0, "sheet columns; default is auto-packed")
+	padding := fs.Int("padding", 0, "sheet padding in pixels between cells")
 	path, parseArgs := splitSinglePathArg(args)
 	if err := fs.Parse(parseArgs); err != nil {
 		return err
@@ -89,7 +89,7 @@ func runExport(args []string, stdout, _ io.Writer, asJSON bool) error {
 	}
 	subject := outputSubject(inDir)
 	if *outPath == "" {
-		*outPath = defaultExportOutPath(inDir, format.Name())
+		*outPath = defaultExportOut(inDir, format.Name())
 	}
 
 	ctx, err := internalexport.LoadContext(inDir, format.Name(), subject, *outPath, *dryRun, exportOptions(*fps, *scale, *loop, *cols, *padding))

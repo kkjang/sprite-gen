@@ -82,6 +82,38 @@ func TestRunSegmentSubjectsWritesFramesAndManifest(t *testing.T) {
 	}
 }
 
+func TestRunSegmentSubjectsInfersRowMajorGridMetadata(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "synthetic_2x2_blobs.png")
+	outDir := filepath.Join(root, "frames")
+	img := syntheticSegmentGridCanvas()
+	writeCommandPNG(t, path, img)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	exitCode := run([]string{"segment", "subjects", path, "--cell", "32x32", "--expected", "4", "--out", outDir}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() exit code = %d, want 0; stderr=%q", exitCode, stderr.String())
+	}
+
+	gotManifest, err := manifest.Read(filepath.Join(outDir, "manifest.json"))
+	if err != nil {
+		t.Fatalf("manifest.Read() error = %v", err)
+	}
+	if gotManifest.Cols != 2 || gotManifest.Rows != 2 {
+		t.Fatalf("manifest cols/rows = %d/%d, want 2/2", gotManifest.Cols, gotManifest.Rows)
+	}
+	for i, want := range []struct{ row, col int }{{0, 0}, {0, 1}, {1, 0}, {1, 1}} {
+		frame := gotManifest.Frames[i]
+		if frame.Row == nil || *frame.Row != want.row {
+			t.Fatalf("frame %d row = %+v, want %d", i, frame.Row, want.row)
+		}
+		if frame.Col == nil || *frame.Col != want.col {
+			t.Fatalf("frame %d col = %+v, want %d", i, frame.Col, want.col)
+		}
+	}
+}
+
 func TestRunSegmentSubjectsExpectedCountMismatch(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "synthetic_4_blobs.png")
@@ -214,4 +246,19 @@ func syntheticSegmentCanvas() (*image.NRGBA, []image.Rectangle) {
 		fillNRGBA(img, rect, colors[i])
 	}
 	return img, rects
+}
+
+func syntheticSegmentGridCanvas() *image.NRGBA {
+	img := image.NewNRGBA(image.Rect(0, 0, 160, 96))
+	rects := []image.Rectangle{
+		image.Rect(10, 8, 28, 28),
+		image.Rect(74, 10, 92, 30),
+		image.Rect(12, 58, 30, 78),
+		image.Rect(72, 56, 90, 76),
+	}
+	colors := []color.NRGBA{{R: 255, A: 255}, {G: 255, A: 255}, {B: 255, A: 255}, {R: 255, G: 255, A: 255}}
+	for i, rect := range rects {
+		fillNRGBA(img, rect, colors[i])
+	}
+	return img
 }

@@ -14,8 +14,8 @@ import (
 )
 
 func TestGIFExportWritesAnimatedGIF(t *testing.T) {
-	outPath := filepath.Join(t.TempDir(), "preview.gif")
-	ctx := testGIFContext(outPath, false, map[string]string{"fps": "8"}, 32, 32)
+	outDir := filepath.Join(t.TempDir(), "export")
+	ctx := testGIFContext(outDir, false, map[string]string{"fps": "8"}, "hero", 32, 32)
 
 	result, err := GIF{}.Export(ctx)
 	if err != nil {
@@ -24,16 +24,21 @@ func TestGIFExportWritesAnimatedGIF(t *testing.T) {
 	if result == nil {
 		t.Fatal("Export() result = nil, want summary")
 	}
+	data := result.Data.(map[string]any)
+	gifPath := filepath.Join(outDir, "hero_preview.gif")
+	if data["out"] != outDir || data["gif"] != gifPath {
+		t.Fatalf("result paths = %+v, want out=%q gif=%q", data, outDir, gifPath)
+	}
 
-	data, err := os.ReadFile(outPath)
+	dataBytes, err := os.ReadFile(gifPath)
 	if err != nil {
 		t.Fatalf("os.ReadFile() error = %v", err)
 	}
-	if !bytes.HasPrefix(data, []byte("GIF89a")) && !bytes.HasPrefix(data, []byte("GIF87a")) {
-		t.Fatalf("GIF header = %q, want GIF89a or GIF87a", data[:6])
+	if !bytes.HasPrefix(dataBytes, []byte("GIF89a")) && !bytes.HasPrefix(dataBytes, []byte("GIF87a")) {
+		t.Fatalf("GIF header = %q, want GIF89a or GIF87a", dataBytes[:6])
 	}
 
-	decoded, err := stdgif.DecodeAll(bytes.NewReader(data))
+	decoded, err := stdgif.DecodeAll(bytes.NewReader(dataBytes))
 	if err != nil {
 		t.Fatalf("gif.DecodeAll() error = %v", err)
 	}
@@ -54,14 +59,14 @@ func TestGIFExportWritesAnimatedGIF(t *testing.T) {
 }
 
 func TestGIFExportScale2(t *testing.T) {
-	outPath := filepath.Join(t.TempDir(), "preview.gif")
-	ctx := testGIFContext(outPath, false, map[string]string{"scale": "2"}, 32, 32)
+	outDir := filepath.Join(t.TempDir(), "export")
+	ctx := testGIFContext(outDir, false, map[string]string{"scale": "2"}, "hero", 32, 32)
 
 	if _, err := (GIF{}).Export(ctx); err != nil {
 		t.Fatalf("Export() error = %v", err)
 	}
 
-	data, err := os.ReadFile(outPath)
+	data, err := os.ReadFile(filepath.Join(outDir, "hero_preview.gif"))
 	if err != nil {
 		t.Fatalf("os.ReadFile() error = %v", err)
 	}
@@ -78,18 +83,19 @@ func TestGIFExportScale2(t *testing.T) {
 }
 
 func TestGIFExportDryRunDoesNotWrite(t *testing.T) {
-	outPath := filepath.Join(t.TempDir(), "preview.gif")
-	ctx := testGIFContext(outPath, true, nil, 16, 16)
+	outDir := filepath.Join(t.TempDir(), "export")
+	ctx := testGIFContext(outDir, true, nil, "hero", 16, 16)
 
 	if _, err := (GIF{}).Export(ctx); err != nil {
 		t.Fatalf("Export() error = %v", err)
 	}
-	if _, err := os.Stat(outPath); !os.IsNotExist(err) {
-		t.Fatalf("os.Stat(%q) error = %v, want not exists", outPath, err)
+	gifPath := filepath.Join(outDir, "hero_preview.gif")
+	if _, err := os.Stat(gifPath); !os.IsNotExist(err) {
+		t.Fatalf("os.Stat(%q) error = %v, want not exists", gifPath, err)
 	}
 }
 
-func testGIFContext(outPath string, dryRun bool, options map[string]string, w, h int) *internalexport.Context {
+func testGIFContext(outDir string, dryRun bool, options map[string]string, subject string, w, h int) *internalexport.Context {
 	frames := make([]internalexport.Frame, 4)
 	colors := []color.NRGBA{{R: 255, A: 255}, {G: 255, A: 255}, {B: 255, A: 255}, {R: 255, G: 255, A: 255}}
 	for i, c := range colors {
@@ -102,7 +108,7 @@ func testGIFContext(outPath string, dryRun bool, options map[string]string, w, h
 			Image: img,
 		}
 	}
-	return &internalexport.Context{Format: "gif", OutPath: outPath, Frames: frames, Options: options, DryRun: dryRun}
+	return &internalexport.Context{Format: "gif", OutPath: outDir, Frames: frames, Options: options, DryRun: dryRun, Subject: subject}
 }
 
 func fill(img *image.NRGBA, rect image.Rectangle, c color.NRGBA) {
