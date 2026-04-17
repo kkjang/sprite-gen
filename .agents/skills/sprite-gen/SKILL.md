@@ -44,6 +44,7 @@ metadata:
 - Use `--dry-run` when you need to confirm paths before writing files.
 - Keep command choices aligned with `sprite-gen --json spec` instead of hardcoding stale assumptions.
 - The currently shipped export formats are discovered from `sprite-gen export --list-formats`; at the time this skill was written, they are `gif` and `sheet`.
+- For Godot projects, `sprite-gen export DIR --format sheet` writes a PNG plus JSON manifest that can be brought into the project and imported through the Godot-side workflow.
 - `inspect` is read-only. Do not expect it to write files or create output directories.
 
 ## Canonical pipelines
