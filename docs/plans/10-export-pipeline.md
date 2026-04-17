@@ -2,21 +2,21 @@
 
 ## Goal
 
-Introduce the format registry and the `export` command. Ship two engine-agnostic formats (`gif` for preview, `sheet-png` for packed sprite sheet) to prove the registry extends cleanly before adding engine-specific formats in plan 11.
+Introduce the format registry and the `export` command. Ship two engine-agnostic formats (`gif` for preview, `sheet` for packed sprite sheet + metadata) to prove the registry extends cleanly before adding engine-specific formats in plan 11.
 
 Implemented with two verified adjustments from the original draft:
-- `sheet-png` writes a single PNG artifact only. It does not emit a companion `manifest.json` because `--out` should name the artifact itself.
-- `sheet-png` accepts mixed-size frame sets and pads them into max-size cells, so it is a terminal export artifact rather than a lossless trimmed-frame serialization.
+- `sheet` writes two artifacts into `--out`, which is a directory: `<subject>_sheet.png` and a sibling `<subject>_sheet.json` manifest with the same shared manifest shape used elsewhere plus `sheet` and `sheet_size` fields. The JSON write is best-effort atomic via temp file + rename.
+- `sheet` accepts mixed-size frame sets and pads them into max-size cells, so it is a terminal export artifact rather than a lossless trimmed-frame serialization.
 
 ## Scope
 
 **In:**
 - `internal/export` package: `Format` interface + registry, `ExportContext` struct
 - `internal/export/formats/gif`: animated GIF preview
-- `internal/export/formats/sheetpng`: pack frames back into a single sprite sheet PNG
+- `internal/export/formats/sheet`: pack frames back into a single sprite sheet PNG plus JSON sidecar
 - `sprite-gen export DIR --format=<name>` — single convergence point for all output formats
 - `sprite-gen export DIR --list-formats` — print available formats (mirrors `spec` but format-scoped)
-- Tests: registry wiring, GIF output, sheet-png packing behavior
+- Tests: registry wiring, GIF output, sheet packing behavior
 
 **Out:**
 - Any engine-specific formats (plan 11)
@@ -36,9 +36,9 @@ sprite-gen/
         gif/
           gif.go                        # Format impl: animated GIF
           gif_test.go
-        sheetpng/
-          sheetpng.go                   # Format impl: packed sprite sheet
-          sheetpng_test.go
+        sheet/
+          sheet.go                      # Format impl: packed sprite sheet
+          sheet_test.go
 ```
 
 ## Export package design
@@ -49,10 +49,10 @@ sprite-gen/
 // Package export defines the Format interface and the format registry.
 package export
 
-// Format is implemented by each output format (gif, sheet-png,
+// Format is implemented by each output format (gif, sheet,
 // godot-spriteframes, godot-atlas, ...).
 type Format interface {
-    // Name returns the --format flag value (e.g. "gif", "sheet-png").
+    // Name returns the --format flag value (e.g. "gif", "sheet").
     Name() string
     // Description is shown in sprite-gen export --list-formats.
     Description() string
@@ -139,31 +139,37 @@ colors, quantize per-frame (each frame can have its own palette in GIF).
 Because GIF delays are stored in centiseconds, the exporter rounds `fps` to the
 nearest representable frame delay.
 
-### `internal/export/formats/sheetpng/sheetpng.go`
+### `internal/export/formats/sheet/sheet.go`
 
 ```go
-package sheetpng
+package sheet
 
 // Options read from ctx.Options:
 //   cols    int (default: ceil(sqrt(N)) for roughly square output)
 //   padding int (default 0)
 
-type SheetPNG struct{}
+type Sheet struct{}
 
-func (s SheetPNG) Name() string        { return "sheet-png" }
-func (s SheetPNG) Description() string { return "Pack frames into a sprite sheet PNG" }
-func (s SheetPNG) Export(ctx *export.Context) (*export.Result, error) { ... }
+func (s Sheet) Name() string        { return "sheet" }
+func (s Sheet) Description() string { return "Pack frames into a sprite sheet PNG plus JSON manifest" }
+func (s Sheet) Export(ctx *export.Context) (*export.Result, error) { ... }
 
-func init() { export.Register(SheetPNG{}) }
+func init() { export.Register(Sheet{}) }
 ```
 
 Implementation outline:
 1. Load frame images. Determine max cell W and H across all frames.
 2. Pack into a grid of `--cols` columns.
 3. Draw each frame at its grid position using `image/draw`.
-4. Write the sheet PNG.
+4. Write `<subject>_sheet.png` and sibling `<subject>_sheet.json` under the output directory.
 
-When input frames are mixed-size, `sheet-png` pads them into max-size cells.
+The sheet manifest reuses the shared `manifest.Manifest` type. For sheet exports,
+`frames[].x/y/w/h` record each frame's rectangle inside the packed sheet PNG, and
+optional `frames[].duration_ms` / `frames[].tag` fields are preserved when they
+already exist on the input frame-set manifest.
+The internal Go model still uses `manifest.Rect`; only the JSON schema is flat.
+
+When input frames are mixed-size, `sheet` pads them into max-size cells.
 That preserves visible pixels and frame order, but does not promise exact
 trim-preserving round-trip behavior through `slice grid`.
 
@@ -173,13 +179,13 @@ trim-preserving round-trip behavior through `slice grid`.
 
 Flags:
 - `--format NAME` (required): registered format name
-- `--out PATH` (default: format-specific, usually `./out/<subject>/export/<name>.<ext>`)
+- `--out PATH` (default: `./out/<subject>/export/`; export formats write their artifacts into this output directory)
 - `--dry-run`
 - `--fps N` (default 8): passed to gif format
-- `--cols N`: passed to sheet-png format
+- `--cols N`: passed to sheet format
 - `--scale N` (default 1): pixel upscale for gif preview
 - `--loop` (default true): for gif
-- `--padding N` (default 0): for sheet-png
+- `--padding N` (default 0): for sheet
 - global `--json`
 
 Behavior:
@@ -201,7 +207,8 @@ JSON output:
   "ok": true,
   "data": {
     "format": "gif",
-    "out": "out/walk_4x1/export/walk_4x1_preview.gif",
+    "out": "out/walk_4x1/export",
+    "gif": "out/walk_4x1/export/walk_4x1_preview.gif",
     "frames": 4,
     "fps": 8,
     "frame_delay_cs": 13,
@@ -219,7 +226,7 @@ Prints available formats without running an export:
 
 ```
 gif         Animated GIF preview (for visual verification)
-sheet-png   Pack frames into a sprite sheet PNG
+sheet       Pack frames into a sprite sheet PNG plus JSON manifest
 ```
 
 With `--json`:
@@ -230,7 +237,7 @@ With `--json`:
   "data": {
       "formats": [
         {"name": "gif", "description": "Animated GIF preview (for visual verification)"},
-        {"name": "sheet-png", "description": "Pack frames into a sprite sheet PNG"}
+        {"name": "sheet", "description": "Pack frames into a sprite sheet PNG plus JSON manifest"}
       ]
     }
   }
@@ -250,15 +257,18 @@ With `--json`:
 - `--scale 2` on a 32x32 frame set produces 64x64 GIF frames.
 - `--dry-run` produces no file.
 
-`internal/export/formats/sheetpng`:
-- Sheet dimensions: 4 frames, 32x32 each, `--cols 4` → sheet 128x32.
+`internal/export/formats/sheet`:
+- Writes `hero_sheet.png` and `hero_sheet.json` into the chosen output directory.
+- Sheet manifest has `version: 1`, `sheet: "hero_sheet.png"`, and `sheet_size` matching the PNG bounds.
+- Frame order is preserved and each `frames[].x/y/w/h` rectangle falls within `sheet_size`.
+- Optional `frames[].duration_ms` / `frames[].tag` fields round-trip when present and are omitted when absent.
 - Mixed-size inputs are padded into max-size cells and reported as `mixed_sizes: true`.
 - `--padding 2` on a 2x2 10x10 frame set produces a 22x22 sheet.
 - `--dry-run` produces no file.
 
 Command-level tests:
-- `export DIR --format gif --json` → envelope with `frames: 4`.
-- `export DIR --format sheet-png --cols 4 --json` → envelope with `out` ending in `.png`.
+- `export DIR --format gif --json` → envelope with `out` ending in `/export` and `gif` ending in `.gif`.
+- `export DIR --format sheet --cols 4 --json` → envelope with `out` ending in `/export`, plus `png` and `manifest` paths.
 - `export dir --format unknown` → exit non-zero, error lists valid formats.
 - `export dir --list-formats --json` → envelope with `formats` array.
 
@@ -269,11 +279,11 @@ Command-level tests:
    ```bash
    sprite-gen slice grid testdata/input/slice/walk_4x1.png --cols 4
    sprite-gen export out/walk_4x1/slice --format gif --fps 8 --scale 2
-   sprite-gen export out/walk_4x1/slice --format sheet-png --cols 4
+   sprite-gen export out/walk_4x1/slice --format sheet --cols 4
    ```
    All three commands exit 0.
 3. The GIF is viewable (valid GIF89a header, correct frame count).
-4. `sheet-png` writes exactly one PNG artifact at `--out`.
+4. `sheet` writes `<subject>_sheet.png` and `<subject>_sheet.json` into `--out`.
 5. `sprite-gen export --list-formats` shows exactly two formats.
 6. `sprite-gen spec` shows sixteen commands.
 7. No new non-stdlib dependencies (stdlib `image/gif` handles GIF encoding).
@@ -281,12 +291,12 @@ Command-level tests:
 ## Suggested commit message
 
 ```
-feat(export): format registry + gif and sheet-png exporters
+ feat(export): format registry + gif and sheet exporters
 
 Add internal/export with Format interface and init()-based registry.
 Single `export DIR --format=<name>` command replaces the previous
 compose verbs. Ship two engine-agnostic formats: gif (animated preview)
-and sheet-png (repack). Plan 11 adds engine-specific formats.
+and sheet (repack plus JSON metadata). Plan 11 adds engine-specific formats.
 ```
 
 ## Notes for the next plan

@@ -148,10 +148,14 @@ type pivotSummary struct {
 }
 
 type loadedFrame struct {
-	Index int
-	Path  string
-	Rect  manifest.Rect
-	Image *image.NRGBA
+	Index      int
+	Path       string
+	Rect       manifest.Rect
+	Row        *int
+	Col        *int
+	Tag        string
+	DurationMS *int
+	Image      *image.NRGBA
 }
 
 type frameSet struct {
@@ -192,7 +196,7 @@ func loadFrameSetFromManifest(dir, manifestPath string) (*frameSet, error) {
 		if err != nil {
 			return nil, err
 		}
-		frames[i] = loadedFrame{Index: frame.Index, Path: frame.Path, Rect: frame.Rect, Image: img}
+		frames[i] = loadedFrame{Index: frame.Index, Path: frame.Path, Rect: frame.Rect, Row: frame.Row, Col: frame.Col, Tag: frame.Tag, DurationMS: frame.DurationMS, Image: img}
 	}
 	return &frameSet{source: m.Source, manifest: m, frames: frames}, nil
 }
@@ -244,12 +248,14 @@ func buildAlignedManifest(set *frameSet, target internalalign.Pivot, aligned []*
 	out.Frames = make([]manifest.Frame, len(set.frames))
 	for i, frame := range set.frames {
 		out.Frames[i] = manifest.Frame{
-			Index: frame.Index,
-			Path:  frame.Path,
-			Rect:  frame.Rect,
-			W:     aligned[i].Bounds().Dx(),
-			H:     aligned[i].Bounds().Dy(),
-			Pivot: &manifest.Point{X: target.X, Y: target.Y},
+			Index:      frame.Index,
+			Path:       frame.Path,
+			Rect:       frame.Rect,
+			Row:        frame.Row,
+			Col:        frame.Col,
+			Pivot:      &manifest.Point{X: target.X, Y: target.Y},
+			DurationMS: frame.DurationMS,
+			Tag:        frame.Tag,
 		}
 	}
 	return out

@@ -95,6 +95,18 @@ func TestRunAlignFramesWritesManifestAndReducesDrift(t *testing.T) {
 		if *frame.Pivot != wantPivot {
 			t.Fatalf("frame %d pivot = %+v, want shared pivot %+v", i, *frame.Pivot, wantPivot)
 		}
+		if frame.Row == nil || *frame.Row != 0 {
+			t.Fatalf("frame %d row = %+v, want 0", i, frame.Row)
+		}
+		if frame.Col == nil || *frame.Col != i {
+			t.Fatalf("frame %d col = %+v, want %d", i, frame.Col, i)
+		}
+		if frame.Tag != "walk" {
+			t.Fatalf("frame %d tag = %q, want walk", i, frame.Tag)
+		}
+		if frame.DurationMS == nil || *frame.DurationMS != 100+i {
+			t.Fatalf("frame %d duration_ms = %+v, want %d", i, frame.DurationMS, 100+i)
+		}
 	}
 }
 
@@ -138,7 +150,10 @@ func writeDriftingFrameSet(t *testing.T, dir string, withManifest bool) []string
 		path := filepath.Join(dir, fmt.Sprintf("frame_%03d.png", i))
 		writeCommandPNG(t, path, img)
 		paths[i] = path
-		frames[i] = manifest.Frame{Index: i, Path: filepath.Base(path), Rect: manifest.Rect{X: i * 32, Y: 0, W: 32, H: 32}, W: 32, H: 32}
+		rowValue := 0
+		colValue := i
+		duration := 100 + i
+		frames[i] = manifest.Frame{Index: i, Path: filepath.Base(path), Rect: manifest.Rect{X: i * 32, Y: 0, W: 32, H: 32}, Row: &rowValue, Col: &colValue, Tag: "walk", DurationMS: &duration}
 	}
 	if withManifest {
 		if err := manifest.Write(filepath.Join(dir, "manifest.json"), &manifest.Manifest{Source: "sheet.png", CellW: 32, CellH: 32, Cols: 4, Rows: 1, Frames: frames}); err != nil {

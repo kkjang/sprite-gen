@@ -14,18 +14,15 @@ func defaultPaletteExtractOutPath(inPath, format string, maxColors int) string {
 	return defaultStageOutPath(inPath, "palette", fmt.Sprintf("extracted-%d.%s", maxColors, strings.ToLower(format)))
 }
 
-func defaultExportOutPath(inPath, formatName string) string {
+func defaultExportOut(inPath, formatName string) string {
 	subject := outputSubject(inPath)
-	base := subject
 	switch formatName {
 	case "gif":
-		base += "_preview.gif"
-	case "sheet-png":
-		base += "_sheet.png"
-	default:
-		base += "." + strings.ReplaceAll(strings.ToLower(formatName), "-", "_")
+		return filepath.Join("out", subject, "export")
+	case "sheet":
+		return filepath.Join("out", subject, "export")
 	}
-	return filepath.Join("out", subject, "export", base)
+	return filepath.Join("out", subject, "export")
 }
 
 func outputSubject(inPath string) string {
@@ -69,6 +66,8 @@ func isOutputStage(name string) bool {
 	case "prep":
 		return true
 	case "resize":
+		return true
+	case "rows":
 		return true
 	default:
 		return false

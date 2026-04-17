@@ -1,5 +1,7 @@
 # Plan 11 — Godot Export Formats
 
+> **Status: Deferred.** sprite-gen should not mint Godot-facing `.tres` files directly because Godot assigns the authoritative UID for imported PNGs when it creates `<file>.png.import`. Any `ext_resource` reference that invents its own UID will only resolve by path fallback, emit warnings on reimport, and break on rename. The supported boundary is sprite-gen exporting sheet metadata, then an editor-mediated tool writing Godot resources from inside the editor.
+
 ## Goal
 
 Add the first engine-specific export formats: `godot-spriteframes` (a `SpriteFrames` resource for `AnimatedSprite2D`) and `godot-atlas` (per-frame `AtlasTexture` resources). This validates that the format registry from plan 10 extends cleanly to engine-specific output without touching generic code.
@@ -207,7 +209,7 @@ used as items in an `ItemList`).
 Command-level tests (via `cmd_export.go`, unchanged from plan 10):
 - `export out/walk_4x1/slice --format godot-spriteframes --json` → envelope with `ok: true`, `out` ending in `.tres`.
 - `export out/walk_4x1/slice --format godot-atlas --sheet res://walk_sheet.png --json` → envelope with `tres_paths` array of 4 paths.
-- `export --list-formats --json` now shows 4 formats: `gif`, `sheet-png`, `godot-spriteframes`, `godot-atlas`.
+- `export --list-formats --json` now shows 4 formats: `gif`, `sheet`, `godot-spriteframes`, `godot-atlas`.
 
 ## Acceptance criteria
 
@@ -255,7 +257,7 @@ sprite-gen slice grid   out/knight/snap/snapped.png --cols 4 --rows 1
 
 # Fix drift and preview
 sprite-gen align frames out/knight/slice --anchor feet
-sprite-gen export       out/knight/align --format gif --fps 8 --scale 2
+sprite-gen export       out/knight/align --format gif --fps 8 --scale 2 --out out/knight/export
 
 # Export to Godot
 sprite-gen export       out/knight/align \

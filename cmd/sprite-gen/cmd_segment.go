@@ -33,7 +33,7 @@ func init() {
 			{Name: "cell", Default: "auto", Description: "Output cell size as WxH or auto"},
 			{Name: "anchor", Default: "feet", Description: "Placement anchor: feet, center, or top"},
 			{Name: "fit", Default: "error", Description: "Oversize policy: error, scale, or crop"},
-			{Name: "sort", Default: "ltr", Description: "Frame ordering: ltr, area, or none"},
+			{Name: "sort", Default: "ltr", Description: "Frame ordering: ltr (row-major sheet order), area, or none"},
 			{Name: "out", Description: "Output directory for frame PNGs and manifest"},
 			{Name: "dry-run", Default: "false", Description: "Report output paths without writing"},
 		},
@@ -64,7 +64,7 @@ func runSegmentSubjects(args []string, stdout io.Writer, asJSON bool) error {
 	cellFlag := fs.String("cell", "auto", "output cell size as WxH or auto")
 	anchorFlag := fs.String("anchor", string(segment.AnchorFeet), "placement anchor: feet, center, or top")
 	fitFlag := fs.String("fit", string(segment.FitError), "oversize policy: error, scale, or crop")
-	sortFlag := fs.String("sort", "ltr", "frame ordering: ltr, area, or none")
+	sortFlag := fs.String("sort", "ltr", "frame ordering: ltr (row-major sheet order), area, or none")
 	outDir := fs.String("out", "", "output directory for frame PNGs and manifest")
 	dryRun := fs.Bool("dry-run", false, "report output paths without writing")
 	path, parseArgs := splitSinglePathArg(args)
@@ -146,34 +146,60 @@ func runSegmentSubjects(args []string, stdout io.Writer, asJSON bool) error {
 		// Keep the label scan order for deterministic but unsorted output.
 	}
 
+	rowGroups := []segment.Row{{Components: components}}
+	if sortMode == "ltr" {
+		rowGroups = segment.GroupRows(components)
+	}
+
+	rowCount := 1
+	colCount := len(components)
+	if sortMode == "ltr" {
+		rowCount = len(rowGroups)
+		colCount = 0
+		for _, row := range rowGroups {
+			if len(row.Components) > colCount {
+				colCount = len(row.Components)
+			}
+		}
+	}
+
 	frames := make([]sheet.Frame, 0, len(components))
 	manifestFrames := make([]manifest.Frame, 0, len(components))
 	responseFrames := make([]segmentFrameResponse, 0, len(components))
-	for i, component := range components {
-		normalized, err := segment.NormalizeToCell(img, component.BBox, cell, anchor, fit)
-		if err != nil {
-			return err
+	frameIndex := 0
+	for rowIndex, row := range rowGroups {
+		for colIndex, component := range row.Components {
+			normalized, err := segment.NormalizeToCell(img, component.BBox, cell, anchor, fit)
+			if err != nil {
+				return err
+			}
+			path := fmt.Sprintf("frame_%03d.png", frameIndex)
+			frames = append(frames, sheet.Frame{Index: frameIndex, Path: path, Rect: component.BBox, Image: normalized})
+			manifestFrame := manifest.Frame{
+				Index: frameIndex,
+				Path:  path,
+				Rect:  manifest.Rect{X: component.BBox.Min.X, Y: component.BBox.Min.Y, W: component.BBox.Dx(), H: component.BBox.Dy()},
+			}
+			if sortMode == "ltr" {
+				rowValue := rowIndex
+				colValue := colIndex
+				manifestFrame.Row = &rowValue
+				manifestFrame.Col = &colValue
+			}
+			manifestFrames = append(manifestFrames, manifestFrame)
+			responseFrames = append(responseFrames, segmentFrameResponse{
+				Index: frameIndex,
+				Path:  path,
+				Rect:  rectSummary{X: component.BBox.Min.X, Y: component.BBox.Min.Y, W: component.BBox.Dx(), H: component.BBox.Dy()},
+				Area:  component.Area,
+			})
+			frameIndex++
 		}
-		path := fmt.Sprintf("frame_%03d.png", i)
-		frames = append(frames, sheet.Frame{Index: i, Path: path, Rect: component.BBox, Image: normalized})
-		manifestFrames = append(manifestFrames, manifest.Frame{
-			Index: i,
-			Path:  path,
-			Rect:  manifest.Rect{X: component.BBox.Min.X, Y: component.BBox.Min.Y, W: component.BBox.Dx(), H: component.BBox.Dy()},
-			W:     normalized.Bounds().Dx(),
-			H:     normalized.Bounds().Dy(),
-		})
-		responseFrames = append(responseFrames, segmentFrameResponse{
-			Index: i,
-			Path:  path,
-			Rect:  rectSummary{X: component.BBox.Min.X, Y: component.BBox.Min.Y, W: component.BBox.Dx(), H: component.BBox.Dy()},
-			Area:  component.Area,
-		})
 	}
 
 	result := &sheet.Result{
-		Cols:   len(frames),
-		Rows:   1,
+		Cols:   colCount,
+		Rows:   rowCount,
 		CellW:  cell.X,
 		CellH:  cell.Y,
 		Frames: frames,
@@ -181,8 +207,8 @@ func runSegmentSubjects(args []string, stdout io.Writer, asJSON bool) error {
 			Source: inPath,
 			CellW:  cell.X,
 			CellH:  cell.Y,
-			Cols:   len(frames),
-			Rows:   1,
+			Cols:   colCount,
+			Rows:   rowCount,
 			Frames: manifestFrames,
 		},
 	}

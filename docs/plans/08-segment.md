@@ -298,7 +298,7 @@ Command-level tests in `cmd/sprite-gen/cmd_segment_test.go` (following the `cmd_
 - Same with `--fit scale` → exit 0, output frames are 16x16.
 
 Round-trip with plan 07 (`slice`):
-- Generate a 128x32 sheet with `sheet-png` export (post-plan-10, not required for this plan's tests; documented as a manual verification).
+- Generate a 128x32 sheet with `sheet` export (post-plan-10, not required for this plan's tests; documented as a manual verification).
 
 ## Acceptance criteria
 

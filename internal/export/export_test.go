@@ -50,28 +50,28 @@ func TestRegistryRegisterDuplicatePanics(t *testing.T) {
 
 func TestRegistryAllSorted(t *testing.T) {
 	r := newRegistry()
-	r.Register(testFormat{name: "sheet-png"})
+	r.Register(testFormat{name: "sheet"})
 	r.Register(testFormat{name: "gif"})
 
 	got := r.All()
 	if len(got) != 2 {
 		t.Fatalf("len(All()) = %d, want 2", len(got))
 	}
-	if got[0].Name() != "gif" || got[1].Name() != "sheet-png" {
-		t.Fatalf("All() names = [%q, %q], want ["+"gif"+", "+"sheet-png"+"]", got[0].Name(), got[1].Name())
+	if got[0].Name() != "gif" || got[1].Name() != "sheet" {
+		t.Fatalf("All() names = [%q, %q], want ["+"gif"+", "+"sheet"+"]", got[0].Name(), got[1].Name())
 	}
 }
 
 func TestRegistryGetUnknownListsAvailableFormats(t *testing.T) {
 	r := newRegistry()
 	r.Register(testFormat{name: "gif"})
-	r.Register(testFormat{name: "sheet-png"})
+	r.Register(testFormat{name: "sheet"})
 
 	_, err := r.Get("bogus")
 	if err == nil {
 		t.Fatal("Get() error = nil, want unknown format error")
 	}
-	if got := err.Error(); got != `unknown export format "bogus"; available formats: gif, sheet-png` {
+	if got := err.Error(); got != `unknown export format "bogus"; available formats: gif, sheet` {
 		t.Fatalf("Get() error = %q, want actionable available format list", got)
 	}
 }
